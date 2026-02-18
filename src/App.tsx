@@ -86,7 +86,7 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        <div className="stock-grid">
+        <div className="stock-list">
           {orderedStocks.map(stock => (
             <StockCard
               key={stock.quote.symbol}

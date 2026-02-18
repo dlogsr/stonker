@@ -26,38 +26,23 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // set to true in production with HTTPS
+    secure: false,
     httpOnly: true,
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    maxAge: 7 * 24 * 60 * 60 * 1000,
   },
 }));
 
-// Auth routes: /api/auth/login, /api/auth/callback, /api/auth/me, /api/auth/logout
 app.use('/api/auth', authRouter);
-
-// Google Finance routes: /api/finance/watchlist
 app.use('/api/finance', financeRouter);
 
-// --- Yahoo Finance direct fetch (no crumb needed) ---
+// --- Yahoo Finance direct fetch ---
 
-interface YFChartMeta {
-  symbol: string;
-  shortName?: string;
-  longName?: string;
-  regularMarketPrice?: number;
-  chartPreviousClose?: number;
-  regularMarketDayHigh?: number;
-  regularMarketDayLow?: number;
-  regularMarketVolume?: number;
-  fiftyTwoWeekHigh?: number;
-  fiftyTwoWeekLow?: number;
-  marketCap?: number;
-}
+const YF_HEADERS = { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' };
 
 async function fetchYahooQuote(symbol: string) {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
+  const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=5m&range=1d&includePrePost=true`;
   const res = await fetch(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },
+    headers: YF_HEADERS,
     signal: AbortSignal.timeout(8000),
   });
   if (!res.ok) throw new Error(`Yahoo returned ${res.status} for ${symbol}`);
@@ -65,14 +50,32 @@ async function fetchYahooQuote(symbol: string) {
   const result = json?.chart?.result?.[0];
   if (!result) throw new Error(`No data for ${symbol}`);
 
-  const meta: YFChartMeta = result.meta;
-  const indicators = result.indicators;
-  const ohlcv = indicators?.quote?.[0];
+  const meta = result.meta;
+  const timestamps: number[] = result.timestamp ?? [];
+  const ohlcv = result.indicators?.quote?.[0] ?? {};
+  const closes: (number | null)[] = ohlcv.close ?? [];
 
   const price = meta.regularMarketPrice ?? 0;
   const previousClose = meta.chartPreviousClose ?? 0;
   const change = price - previousClose;
   const changePercent = previousClose ? (change / previousClose) * 100 : 0;
+
+  // Build chart data — separate pre-market, regular, post-market
+  const tradingPeriod = meta.currentTradingPeriod ?? {};
+  const preStart = tradingPeriod.pre?.start ?? 0;
+  const regularStart = tradingPeriod.regular?.start ?? 0;
+  const regularEnd = tradingPeriod.regular?.end ?? 0;
+  const postEnd = tradingPeriod.post?.end ?? 0;
+
+  const chartPoints: { t: number; p: number; phase: 'pre' | 'regular' | 'post' }[] = [];
+  for (let i = 0; i < timestamps.length; i++) {
+    if (closes[i] == null) continue;
+    const t = timestamps[i];
+    let phase: 'pre' | 'regular' | 'post' = 'regular';
+    if (t < regularStart) phase = 'pre';
+    else if (t >= regularEnd) phase = 'post';
+    chartPoints.push({ t, p: closes[i]!, phase });
+  }
 
   return {
     symbol: meta.symbol ?? symbol,
@@ -82,19 +85,20 @@ async function fetchYahooQuote(symbol: string) {
     changePercent,
     marketCap: formatLargeNumber(meta.marketCap),
     volume: formatLargeNumber(meta.regularMarketVolume),
-    high: meta.regularMarketDayHigh ?? ohlcv?.high?.[0],
-    low: meta.regularMarketDayLow ?? ohlcv?.low?.[0],
-    open: ohlcv?.open?.[0],
+    high: meta.regularMarketDayHigh,
+    low: meta.regularMarketDayLow,
+    open: ohlcv.open?.[0] ?? meta.regularMarketOpen,
     previousClose,
     fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh,
     fiftyTwoWeekLow: meta.fiftyTwoWeekLow,
+    chart: chartPoints,
   };
 }
 
 async function searchYahoo(query: string) {
-  const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0`;
+  const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0`;
   const res = await fetch(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },
+    headers: YF_HEADERS,
     signal: AbortSignal.timeout(8000),
   });
   if (!res.ok) throw new Error(`Yahoo search returned ${res.status}`);
