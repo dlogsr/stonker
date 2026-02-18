@@ -1,3 +1,9 @@
+export interface ChartPoint {
+  t: number;
+  p: number;
+  phase: 'pre' | 'regular' | 'post';
+}
+
 export interface StockQuote {
   symbol: string;
   name: string;
@@ -12,6 +18,7 @@ export interface StockQuote {
   previousClose?: number;
   fiftyTwoWeekHigh?: number;
   fiftyTwoWeekLow?: number;
+  chart?: ChartPoint[];
 }
 
 export interface SentimentData {
