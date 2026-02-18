@@ -1,11 +1,17 @@
 import 'dotenv/config';
+import { ProxyAgent, setGlobalDispatcher } from 'undici';
 import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
-import yahooFinance from 'yahoo-finance2';
 import { fetchSentiment } from './sentiment.js';
 import { authRouter } from './auth.js';
 import { financeRouter } from './google-finance.js';
+
+// Node's native fetch doesn't respect HTTP_PROXY env vars — wire it up manually
+const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy;
+if (proxyUrl) {
+  setGlobalDispatcher(new ProxyAgent(proxyUrl));
+}
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -32,6 +38,77 @@ app.use('/api/auth', authRouter);
 // Google Finance routes: /api/finance/watchlist
 app.use('/api/finance', financeRouter);
 
+// --- Yahoo Finance direct fetch (no crumb needed) ---
+
+interface YFChartMeta {
+  symbol: string;
+  shortName?: string;
+  longName?: string;
+  regularMarketPrice?: number;
+  chartPreviousClose?: number;
+  regularMarketDayHigh?: number;
+  regularMarketDayLow?: number;
+  regularMarketVolume?: number;
+  fiftyTwoWeekHigh?: number;
+  fiftyTwoWeekLow?: number;
+  marketCap?: number;
+}
+
+async function fetchYahooQuote(symbol: string) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
+  const res = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) throw new Error(`Yahoo returned ${res.status} for ${symbol}`);
+  const json: any = await res.json();
+  const result = json?.chart?.result?.[0];
+  if (!result) throw new Error(`No data for ${symbol}`);
+
+  const meta: YFChartMeta = result.meta;
+  const indicators = result.indicators;
+  const ohlcv = indicators?.quote?.[0];
+
+  const price = meta.regularMarketPrice ?? 0;
+  const previousClose = meta.chartPreviousClose ?? 0;
+  const change = price - previousClose;
+  const changePercent = previousClose ? (change / previousClose) * 100 : 0;
+
+  return {
+    symbol: meta.symbol ?? symbol,
+    name: meta.shortName || meta.longName || symbol,
+    price,
+    change,
+    changePercent,
+    marketCap: formatLargeNumber(meta.marketCap),
+    volume: formatLargeNumber(meta.regularMarketVolume),
+    high: meta.regularMarketDayHigh ?? ohlcv?.high?.[0],
+    low: meta.regularMarketDayLow ?? ohlcv?.low?.[0],
+    open: ohlcv?.open?.[0],
+    previousClose,
+    fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh,
+    fiftyTwoWeekLow: meta.fiftyTwoWeekLow,
+  };
+}
+
+async function searchYahoo(query: string) {
+  const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0`;
+  const res = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) throw new Error(`Yahoo search returned ${res.status}`);
+  const json: any = await res.json();
+  return (json.quotes ?? [])
+    .filter((q: any) => q.quoteType === 'EQUITY')
+    .slice(0, 10)
+    .map((q: any) => ({
+      symbol: q.symbol,
+      name: q.shortname || q.longname || q.symbol,
+      exchange: q.exchange,
+    }));
+}
+
 // Get quotes for multiple symbols
 app.get('/api/quotes', async (req, res) => {
   const symbols = (req.query.symbols as string)?.split(',').map(s => s.trim().toUpperCase());
@@ -42,24 +119,7 @@ app.get('/api/quotes', async (req, res) => {
 
   try {
     const results = await Promise.allSettled(
-      symbols.map(async (symbol) => {
-        const quote: any = await yahooFinance.quote(symbol);
-        return {
-          symbol: quote.symbol,
-          name: quote.shortName || quote.longName || symbol,
-          price: quote.regularMarketPrice ?? 0,
-          change: quote.regularMarketChange ?? 0,
-          changePercent: quote.regularMarketChangePercent ?? 0,
-          marketCap: formatLargeNumber(quote.marketCap),
-          volume: formatLargeNumber(quote.regularMarketVolume),
-          high: quote.regularMarketDayHigh,
-          low: quote.regularMarketDayLow,
-          open: quote.regularMarketOpen,
-          previousClose: quote.regularMarketPreviousClose,
-          fiftyTwoWeekHigh: quote.fiftyTwoWeekHigh,
-          fiftyTwoWeekLow: quote.fiftyTwoWeekLow,
-        };
-      })
+      symbols.map(symbol => fetchYahooQuote(symbol))
     );
 
     const quotes = results
@@ -69,6 +129,12 @@ app.get('/api/quotes', async (req, res) => {
     const errors = results
       .map((r, i) => r.status === 'rejected' ? symbols[i] : null)
       .filter(Boolean);
+
+    results.forEach((r, i) => {
+      if (r.status === 'rejected') {
+        console.error(`Quote failed for ${symbols[i]}:`, r.reason?.message ?? r.reason);
+      }
+    });
 
     res.json({ quotes, errors });
   } catch (err) {
@@ -98,16 +164,8 @@ app.get('/api/search', async (req, res) => {
   }
 
   try {
-    const results: any = await yahooFinance.search(query);
-    const quotes = (results.quotes ?? [])
-      .filter((q: any) => q.quoteType === 'EQUITY')
-      .slice(0, 10)
-      .map((q: any) => ({
-        symbol: q.symbol,
-        name: q.shortname || q.longname || q.symbol,
-        exchange: q.exchange,
-      }));
-    res.json({ results: quotes });
+    const results = await searchYahoo(query);
+    res.json({ results });
   } catch (err) {
     console.error('Search error:', err);
     res.status(500).json({ error: 'Search failed' });
