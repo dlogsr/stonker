@@ -100,6 +100,6 @@ function formatLargeNumber(num: number | undefined): string | undefined {
   return num.toString();
 }
 
-app.listen(PORT, () => {
-  console.log(`Stonker API running on http://localhost:${PORT}`);
+app.listen(Number(PORT), '0.0.0.0', () => {
+  console.log(`Stonker API running on http://0.0.0.0:${PORT}`);
 });
