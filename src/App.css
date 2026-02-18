@@ -593,6 +593,73 @@
   cursor: not-allowed;
 }
 
+/* Google Auth */
+.user-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.user-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+
+.user-logout {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.user-logout:hover {
+  color: var(--text-primary);
+  background: var(--bg-card-hover);
+}
+
+.google-login-btn {
+  border-color: #4285F4 !important;
+  color: var(--text-primary) !important;
+}
+
+.google-login-btn:hover {
+  background: rgba(66, 133, 244, 0.1) !important;
+}
+
+.google-sync-btn {
+  border-color: var(--green) !important;
+  color: var(--green) !important;
+}
+
+.google-sync-btn:hover {
+  background: var(--green-bg) !important;
+}
+
+/* Sync Banner */
+.sync-banner {
+  padding: 8px 20px;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.sync-banner.success {
+  background: var(--green-bg);
+  color: var(--green);
+}
+
+.sync-banner.info {
+  background: var(--blue-bg);
+  color: var(--blue);
+}
+
 /* Responsive */
 @media (max-width: 600px) {
   .app-header {

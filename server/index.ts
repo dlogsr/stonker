@@ -1,13 +1,36 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import session from 'express-session';
 import yahooFinance from 'yahoo-finance2';
 import { fetchSentiment } from './sentiment.js';
+import { authRouter } from './auth.js';
+import { financeRouter } from './google-finance.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true,
+}));
 app.use(express.json());
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'stonker-dev-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: false, // set to true in production with HTTPS
+    httpOnly: true,
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  },
+}));
+
+// Auth routes: /api/auth/login, /api/auth/callback, /api/auth/me, /api/auth/logout
+app.use('/api/auth', authRouter);
+
+// Google Finance routes: /api/finance/watchlist
+app.use('/api/finance', financeRouter);
 
 // Get quotes for multiple symbols
 app.get('/api/quotes', async (req, res) => {
