@@ -6,6 +6,7 @@ import session from 'express-session';
 import { fetchSentiment } from './sentiment.js';
 import { authRouter } from './auth.js';
 import { financeRouter } from './google-finance.js';
+import { wsbRouter } from './wsb-trending.js';
 
 // Node's native fetch doesn't respect HTTP_PROXY env vars — wire it up manually
 const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy;
@@ -34,6 +35,7 @@ app.use(session({
 
 app.use('/api/auth', authRouter);
 app.use('/api/finance', financeRouter);
+app.use('/api/wsb', wsbRouter);
 
 // --- Yahoo Finance direct fetch ---
 
