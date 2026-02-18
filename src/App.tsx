@@ -3,15 +3,18 @@ import { Header } from './components/Header';
 import { StockCard } from './components/StockCard';
 import { AddStock } from './components/AddStock';
 import { ImportModal } from './components/ImportModal';
+import { MemeBets } from './components/MemeBets';
 import { useWatchlist } from './hooks/useWatchlist';
 import { useStockData } from './hooks/useStockData';
 import { useAuth } from './hooks/useAuth';
+import { useMemeBets } from './hooks/useMemeBets';
 import './App.css';
 
 export const App: React.FC = () => {
   const { symbols, addSymbol, removeSymbol, importFromText } = useWatchlist();
   const { stocks, loading, error, refresh } = useStockData(symbols);
   const { authenticated, user, login, logout, syncWatchlist } = useAuth();
+  const memeBets = useMemeBets();
   const [showImport, setShowImport] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
@@ -101,6 +104,13 @@ export const App: React.FC = () => {
             Auto-refreshes every 30s &middot; Sentiment updates every 5m
           </div>
         )}
+
+        <MemeBets
+          bets={memeBets.bets}
+          loading={memeBets.loading}
+          onAddTicker={addSymbol}
+          existingSymbols={symbols}
+        />
       </main>
 
       <ImportModal
