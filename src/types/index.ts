@@ -24,9 +24,10 @@ export interface StockQuote {
   weekChange?: number;
   monthChange?: number;
   signals?: string[];
+  earningsDate?: string;
 }
 
-export type SortMode = 'default' | 'pctChange' | 'dollarChange' | 'sentiment';
+export type SortMode = 'default' | 'alpha' | 'pctChange' | 'dollarChange' | 'sentiment';
 
 export interface SentimentData {
   summary: string;
