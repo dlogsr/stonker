@@ -10,7 +10,74 @@
   max-width: 680px;
   width: 100%;
   margin: 0 auto;
-  padding: 8px 12px 60px;
+  padding: 0 12px 60px;
+}
+
+/* ===== Tab Bar ===== */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 41px;
+  z-index: 90;
+  background: var(--bg-primary);
+  backdrop-filter: blur(12px);
+}
+
+.tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.tab-btn:hover {
+  color: var(--text-secondary);
+  background: var(--bg-card-hover);
+}
+
+.tab-btn.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--blue);
+}
+
+.tab-btn svg {
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+.tab-btn.active svg {
+  opacity: 1;
+}
+
+.tab-count {
+  background: var(--bg-card-hover);
+  color: var(--text-muted);
+  font-size: 0.55rem;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 8px;
+  min-width: 16px;
+  text-align: center;
+}
+
+.tab-btn.active .tab-count {
+  background: var(--blue);
+  color: white;
+}
+
+.tab-panel {
+  padding-top: 8px;
 }
 
 /* ===== Header ===== */
@@ -821,7 +888,13 @@ a.feed-text:hover {
   }
 
   .app-main {
-    padding: 6px 8px 60px;
+    padding: 0 8px 60px;
+  }
+
+  .tab-btn {
+    font-size: 0.6rem;
+    padding: 8px 4px;
+    gap: 4px;
   }
 
   .section-header {
@@ -872,8 +945,13 @@ a.feed-text:hover {
 
 /* ===== CRAZY MEME BETS Section ===== */
 .meme-section {
-  margin-top: 28px;
-  border-top: 2px solid var(--border);
+  margin-top: 8px;
+  padding-top: 8px;
+}
+
+.meme-section + .meme-section {
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
   padding-top: 16px;
 }
 
