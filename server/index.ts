@@ -9,6 +9,7 @@ import { fetchSentiment } from './sentiment.js';
 import { authRouter } from './auth.js';
 import { financeRouter } from './google-finance.js';
 import { wsbRouter } from './wsb-trending.js';
+import { redditWsbRouter } from './reddit-wsb.js';
 import { fetchYahooChart, fetchHistoricalChanges, fetchEarningsDate, searchYahoo } from './yahoo-chart.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -52,7 +53,8 @@ app.use(session({
 // --- API routes ---
 app.use('/api/auth', authRouter);
 app.use('/api/finance', financeRouter);
-app.use('/api/wsb', wsbRouter);
+app.use('/api/stocktwits', wsbRouter);
+app.use('/api/wsb', redditWsbRouter);
 
 // Get quotes for multiple symbols
 app.get('/api/quotes', async (req, res) => {
@@ -137,7 +139,7 @@ if (isProd) {
   const distPath = path.join(__dirname, '..', 'dist');
   app.use(express.static(distPath));
   // SPA fallback: serve index.html for all non-API routes
-  app.get('*', (_req, res) => {
+  app.get('/{*splat}', (_req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
   });
 }

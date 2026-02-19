@@ -15,7 +15,8 @@ export const App: React.FC = () => {
   const { symbols, addSymbol, removeSymbol, importFromText } = useWatchlist();
   const { stocks, loading, error, refresh } = useStockData(symbols);
   const { authenticated, user, login, logout, syncWatchlist } = useAuth();
-  const memeBets = useMemeBets();
+  const stocktwitsBets = useMemeBets('stocktwits');
+  const wsbBets = useMemeBets('wsb');
   const [showImport, setShowImport] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
@@ -48,9 +49,9 @@ export const App: React.FC = () => {
         case 'alpha':
           return a.quote.symbol.localeCompare(b.quote.symbol);
         case 'pctChange':
-          return Math.abs(b.quote.changePercent) - Math.abs(a.quote.changePercent);
+          return b.quote.changePercent - a.quote.changePercent;
         case 'dollarChange':
-          return Math.abs(b.quote.change) - Math.abs(a.quote.change);
+          return b.quote.change - a.quote.change;
         case 'sentiment': {
           const sentVal = (s: StockData) =>
             s.sentiment?.sentiment === 'bullish' ? 2 : s.sentiment?.sentiment === 'bearish' ? 0 : 1;
@@ -153,10 +154,19 @@ export const App: React.FC = () => {
         )}
 
         <MemeBets
-          bets={memeBets.bets}
-          loading={memeBets.loading}
+          bets={stocktwitsBets.bets}
+          loading={stocktwitsBets.loading}
           onAddTicker={addSymbol}
           existingSymbols={symbols}
+          source="stocktwits"
+        />
+
+        <MemeBets
+          bets={wsbBets.bets}
+          loading={wsbBets.loading}
+          onAddTicker={addSymbol}
+          existingSymbols={symbols}
+          source="wsb"
         />
       </main>
 
