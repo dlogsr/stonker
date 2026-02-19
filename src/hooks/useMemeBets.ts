@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { ChartPoint } from '../types';
 
 export interface MemeBet {
   rank: number;
@@ -12,7 +13,16 @@ export interface MemeBet {
   beta?: number;
   peRatio?: number;
   marketCap?: string;
-  topMessages: { body: string; sentiment: string }[];
+  // Price + chart
+  price: number;
+  change: number;
+  changePercent: number;
+  previousClose: number;
+  chart: ChartPoint[];
+  // Engagement volume
+  messageCount: number;
+  totalLikes: number;
+  topMessages: { body: string; sentiment: string; likes: number }[];
 }
 
 export function useMemeBets() {
@@ -36,7 +46,7 @@ export function useMemeBets() {
 
   useEffect(() => {
     fetch_();
-    const id = setInterval(fetch_, 5 * 60 * 1000); // refresh every 5 min
+    const id = setInterval(fetch_, 5 * 60 * 1000);
     return () => clearInterval(id);
   }, [fetch_]);
 

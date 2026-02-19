@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { fetchYahooChart, ChartPoint } from './yahoo-chart.js';
 
 export const wsbRouter = Router();
 
@@ -14,15 +15,18 @@ interface MemeBet {
   beta?: number;
   peRatio?: number;
   marketCap?: string;
-  topMessages: { body: string; sentiment: string }[];
+  // Price + chart
+  price: number;
+  change: number;
+  changePercent: number;
+  previousClose: number;
+  chart: ChartPoint[];
+  // Engagement volume
+  messageCount: number;
+  totalLikes: number;
+  topMessages: { body: string; sentiment: string; likes: number }[];
 }
 
-/**
- * GET /api/wsb/trending
- *
- * Fetches trending meme stocks from StockTwits (which heavily overlaps with WSB),
- * enriches with sentiment from the symbol stream, and returns ranked by trend score.
- */
 wsbRouter.get('/trending', async (_req, res) => {
   try {
     // 1. Get trending symbols
@@ -37,17 +41,21 @@ wsbRouter.get('/trending', async (_req, res) => {
     const trendData = await trendRes.json() as any;
     const symbols = (trendData.symbols ?? [])
       .filter((s: any) => s.instrument_class === 'Stock')
-      .slice(0, 12); // top 12 to enrich, we'll return top 8
+      .slice(0, 8);
 
     if (symbols.length === 0) {
       res.json({ bets: [] });
       return;
     }
 
-    // 2. Enrich top symbols with sentiment from their streams (parallel, batched)
+    // 2. Enrich each symbol with sentiment + chart in parallel
     const enriched = await Promise.all(
-      symbols.slice(0, 8).map(async (sym: any): Promise<MemeBet> => {
-        const { bullPct, topMessages } = await fetchSymbolSentiment(sym.symbol);
+      symbols.map(async (sym: any): Promise<MemeBet> => {
+        // Fetch sentiment stream and Yahoo chart concurrently
+        const [streamData, chartData] = await Promise.all([
+          fetchSymbolStream(sym.symbol),
+          fetchYahooChart(sym.symbol).catch(() => null),
+        ]);
 
         const f = sym.fundamentals ?? {};
 
@@ -57,18 +65,26 @@ wsbRouter.get('/trending', async (_req, res) => {
           name: sym.title ?? sym.symbol,
           trendScore: sym.trending_score ?? 0,
           summary: sym.trends?.summary ?? '',
-          sentiment: bullPct >= 60 ? 'bullish' : bullPct <= 40 ? 'bearish' : 'neutral',
-          bullPct,
+          sentiment: streamData.bullPct >= 60 ? 'bullish' : streamData.bullPct <= 40 ? 'bearish' : 'neutral',
+          bullPct: streamData.bullPct,
           watchers: sym.watchlist_count ?? 0,
           beta: f.Beta ? Number(f.Beta) : undefined,
           peRatio: f.PERatio ? Number(f.PERatio) : undefined,
           marketCap: formatMktCap(f.MarketCap),
-          topMessages,
+          // Price + chart from Yahoo
+          price: chartData?.price ?? 0,
+          change: chartData?.change ?? 0,
+          changePercent: chartData?.changePercent ?? 0,
+          previousClose: chartData?.previousClose ?? 0,
+          chart: chartData?.chart ?? [],
+          // Engagement
+          messageCount: streamData.messageCount,
+          totalLikes: streamData.totalLikes,
+          topMessages: streamData.topMessages,
         };
       })
     );
 
-    // Sort by trend score (already ranked, but be safe)
     enriched.sort((a, b) => b.trendScore - a.trendScore);
 
     res.json({ bets: enriched });
@@ -78,42 +94,54 @@ wsbRouter.get('/trending', async (_req, res) => {
   }
 });
 
-async function fetchSymbolSentiment(symbol: string): Promise<{
+interface StreamResult {
   bullPct: number;
-  topMessages: { body: string; sentiment: string }[];
-}> {
+  messageCount: number;
+  totalLikes: number;
+  topMessages: { body: string; sentiment: string; likes: number }[];
+}
+
+async function fetchSymbolStream(symbol: string): Promise<StreamResult> {
   try {
     const url = `https://api.stocktwits.com/api/2/streams/symbol/${encodeURIComponent(symbol)}.json`;
     const res = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0' },
       signal: AbortSignal.timeout(5000),
     });
-    if (!res.ok) return { bullPct: 50, topMessages: [] };
+    if (!res.ok) return { bullPct: 50, messageCount: 0, totalLikes: 0, topMessages: [] };
     const data = await res.json() as any;
     const msgs = data?.messages ?? [];
 
     let bull = 0;
     let bear = 0;
-    const topMessages: { body: string; sentiment: string }[] = [];
+    let totalLikes = 0;
+    const topMessages: { body: string; sentiment: string; likes: number }[] = [];
 
     for (const m of msgs) {
       const st = ((m.entities ?? null)?.sentiment ?? null)?.basic;
       if (st === 'Bullish') bull++;
       else if (st === 'Bearish') bear++;
 
-      if (topMessages.length < 3) {
+      const likes = m.likes?.total ?? 0;
+      totalLikes += likes;
+
+      if (topMessages.length < 4) {
         topMessages.push({
           body: (m.body ?? '').substring(0, 160),
           sentiment: st === 'Bullish' ? 'bullish' : st === 'Bearish' ? 'bearish' : 'neutral',
+          likes,
         });
       }
     }
 
+    // Sort top messages by likes descending so most-upvoted appear first
+    topMessages.sort((a, b) => b.likes - a.likes);
+
     const total = bull + bear;
     const bullPct = total > 0 ? Math.round((bull / total) * 100) : 50;
-    return { bullPct, topMessages };
+    return { bullPct, messageCount: msgs.length, totalLikes, topMessages };
   } catch {
-    return { bullPct: 50, topMessages: [] };
+    return { bullPct: 50, messageCount: 0, totalLikes: 0, topMessages: [] };
   }
 }
 

@@ -7,6 +7,7 @@ import { fetchSentiment } from './sentiment.js';
 import { authRouter } from './auth.js';
 import { financeRouter } from './google-finance.js';
 import { wsbRouter } from './wsb-trending.js';
+import { fetchYahooChart, searchYahoo } from './yahoo-chart.js';
 
 // Node's native fetch doesn't respect HTTP_PROXY env vars — wire it up manually
 const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy;
@@ -37,84 +38,6 @@ app.use('/api/auth', authRouter);
 app.use('/api/finance', financeRouter);
 app.use('/api/wsb', wsbRouter);
 
-// --- Yahoo Finance direct fetch ---
-
-const YF_HEADERS = { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' };
-
-async function fetchYahooQuote(symbol: string) {
-  const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=5m&range=1d&includePrePost=true`;
-  const res = await fetch(url, {
-    headers: YF_HEADERS,
-    signal: AbortSignal.timeout(8000),
-  });
-  if (!res.ok) throw new Error(`Yahoo returned ${res.status} for ${symbol}`);
-  const json: any = await res.json();
-  const result = json?.chart?.result?.[0];
-  if (!result) throw new Error(`No data for ${symbol}`);
-
-  const meta = result.meta;
-  const timestamps: number[] = result.timestamp ?? [];
-  const ohlcv = result.indicators?.quote?.[0] ?? {};
-  const closes: (number | null)[] = ohlcv.close ?? [];
-
-  const price = meta.regularMarketPrice ?? 0;
-  const previousClose = meta.chartPreviousClose ?? 0;
-  const change = price - previousClose;
-  const changePercent = previousClose ? (change / previousClose) * 100 : 0;
-
-  // Build chart data — separate pre-market, regular, post-market
-  const tradingPeriod = meta.currentTradingPeriod ?? {};
-  const preStart = tradingPeriod.pre?.start ?? 0;
-  const regularStart = tradingPeriod.regular?.start ?? 0;
-  const regularEnd = tradingPeriod.regular?.end ?? 0;
-  const postEnd = tradingPeriod.post?.end ?? 0;
-
-  const chartPoints: { t: number; p: number; phase: 'pre' | 'regular' | 'post' }[] = [];
-  for (let i = 0; i < timestamps.length; i++) {
-    if (closes[i] == null) continue;
-    const t = timestamps[i];
-    let phase: 'pre' | 'regular' | 'post' = 'regular';
-    if (t < regularStart) phase = 'pre';
-    else if (t >= regularEnd) phase = 'post';
-    chartPoints.push({ t, p: closes[i]!, phase });
-  }
-
-  return {
-    symbol: meta.symbol ?? symbol,
-    name: meta.shortName || meta.longName || symbol,
-    price,
-    change,
-    changePercent,
-    marketCap: formatLargeNumber(meta.marketCap),
-    volume: formatLargeNumber(meta.regularMarketVolume),
-    high: meta.regularMarketDayHigh,
-    low: meta.regularMarketDayLow,
-    open: ohlcv.open?.[0] ?? meta.regularMarketOpen,
-    previousClose,
-    fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh,
-    fiftyTwoWeekLow: meta.fiftyTwoWeekLow,
-    chart: chartPoints,
-  };
-}
-
-async function searchYahoo(query: string) {
-  const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0`;
-  const res = await fetch(url, {
-    headers: YF_HEADERS,
-    signal: AbortSignal.timeout(8000),
-  });
-  if (!res.ok) throw new Error(`Yahoo search returned ${res.status}`);
-  const json: any = await res.json();
-  return (json.quotes ?? [])
-    .filter((q: any) => q.quoteType === 'EQUITY')
-    .slice(0, 10)
-    .map((q: any) => ({
-      symbol: q.symbol,
-      name: q.shortname || q.longname || q.symbol,
-      exchange: q.exchange,
-    }));
-}
-
 // Get quotes for multiple symbols
 app.get('/api/quotes', async (req, res) => {
   const symbols = (req.query.symbols as string)?.split(',').map(s => s.trim().toUpperCase());
@@ -125,7 +48,14 @@ app.get('/api/quotes', async (req, res) => {
 
   try {
     const results = await Promise.allSettled(
-      symbols.map(symbol => fetchYahooQuote(symbol))
+      symbols.map(async (symbol) => {
+        const data = await fetchYahooChart(symbol);
+        return {
+          ...data,
+          marketCap: formatLargeNumber(data.marketCap),
+          volume: formatLargeNumber(data.volume),
+        };
+      })
     );
 
     const quotes = results
