@@ -135,13 +135,20 @@ export const MemeBets: React.FC<Props> = ({ bets, loading, onAddTicker, existing
                     <div className="meme-chatter">
                       <div className="feed-title">Top posts by upvotes</div>
                       {bet.topMessages.map((msg, j) => (
-                        <div key={j} className="meme-msg">
+                        <a
+                          key={j}
+                          className="meme-msg"
+                          href={msg.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <span className={`feed-dot dot-${msg.sentiment}`} />
                           <span className="meme-msg-text">{msg.body}</span>
                           {msg.likes > 0 && (
                             <span className="meme-msg-likes">+{msg.likes}</span>
                           )}
-                        </div>
+                        </a>
                       ))}
                     </div>
                   )}
