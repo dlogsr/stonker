@@ -2,6 +2,43 @@
 
 const YF_HEADERS = { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' };
 
+// Yahoo's v10 endpoints require crumb + cookie auth. Cache them.
+let cachedCrumb: string | null = null;
+let cachedCookie: string | null = null;
+let crumbExpiry = 0;
+
+async function getYahooCrumb(): Promise<{ crumb: string; cookie: string } | null> {
+  if (cachedCrumb && cachedCookie && Date.now() < crumbExpiry) {
+    return { crumb: cachedCrumb, cookie: cachedCookie };
+  }
+  try {
+    // Step 1: Hit fc.yahoo.com to get consent cookies
+    const initRes = await fetch('https://fc.yahoo.com', {
+      headers: YF_HEADERS,
+      redirect: 'manual',
+      signal: AbortSignal.timeout(5000),
+    });
+    const setCookies = initRes.headers.getSetCookie?.() ?? [];
+    const cookieStr = setCookies.map(c => c.split(';')[0]).join('; ');
+
+    // Step 2: Get crumb using cookies
+    const crumbRes = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
+      headers: { ...YF_HEADERS, Cookie: cookieStr },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!crumbRes.ok) return null;
+    const crumb = await crumbRes.text();
+    if (!crumb || crumb.includes('{')) return null;
+
+    cachedCrumb = crumb;
+    cachedCookie = cookieStr;
+    crumbExpiry = Date.now() + 15 * 60 * 1000; // cache for 15 minutes
+    return { crumb, cookie: cookieStr };
+  } catch {
+    return null;
+  }
+}
+
 export interface ChartPoint {
   t: number;
   p: number;
@@ -178,9 +215,11 @@ function avg(arr: number[]): number {
 
 export async function fetchEarningsDate(symbol: string): Promise<string | null> {
   try {
-    const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=calendarEvents`;
+    const auth = await getYahooCrumb();
+    if (!auth) return null;
+    const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=calendarEvents&crumb=${encodeURIComponent(auth.crumb)}`;
     const res = await fetch(url, {
-      headers: YF_HEADERS,
+      headers: { ...YF_HEADERS, Cookie: auth.cookie },
       signal: AbortSignal.timeout(6000),
     });
     if (!res.ok) return null;
