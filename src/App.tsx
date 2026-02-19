@@ -48,9 +48,9 @@ export const App: React.FC = () => {
         case 'alpha':
           return a.quote.symbol.localeCompare(b.quote.symbol);
         case 'pctChange':
-          return Math.abs(b.quote.changePercent) - Math.abs(a.quote.changePercent);
+          return b.quote.changePercent - a.quote.changePercent;
         case 'dollarChange':
-          return Math.abs(b.quote.change) - Math.abs(a.quote.change);
+          return b.quote.change - a.quote.change;
         case 'sentiment': {
           const sentVal = (s: StockData) =>
             s.sentiment?.sentiment === 'bullish' ? 2 : s.sentiment?.sentiment === 'bearish' ? 0 : 1;
