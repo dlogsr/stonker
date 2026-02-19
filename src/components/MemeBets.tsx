@@ -7,17 +7,49 @@ interface Props {
   loading: boolean;
   onAddTicker: (symbol: string) => void;
   existingSymbols: string[];
+  source: 'stocktwits' | 'wsb';
 }
 
-export const MemeBets: React.FC<Props> = ({ bets, loading, onAddTicker, existingSymbols }) => {
+const CONFIG = {
+  stocktwits: {
+    title: 'STOCKTWITS TRENDING',
+    subtitle: 'Trending on StockTwits \u00b7 ranked by hype',
+    loadingText: 'loading StockTwits...',
+    postsLabel: 'posts',
+    likesLabel: 'likes',
+    topPostsTitle: 'Top posts by likes',
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      </svg>
+    ),
+  },
+  wsb: {
+    title: 'WSB DEGENERATES',
+    subtitle: 'Trending on r/wallstreetbets \u00b7 ranked by hype',
+    loadingText: 'scraping WSB...',
+    postsLabel: 'mentions',
+    likesLabel: 'upvotes',
+    topPostsTitle: 'Top threads by upvotes',
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M8 12h8M12 8v8" />
+      </svg>
+    ),
+  },
+};
+
+export const MemeBets: React.FC<Props> = ({ bets, loading, onAddTicker, existingSymbols, source }) => {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const cfg = CONFIG[source];
 
   if (loading) {
     return (
-      <section className="meme-section">
+      <section className={`meme-section meme-${source}`}>
         <div className="meme-header">
-          <h2 className="meme-title">CRAZY MEME BETS</h2>
-          <span className="meme-subtitle">loading trending...</span>
+          <h2 className="meme-title">{cfg.title}</h2>
+          <span className="meme-subtitle">{cfg.loadingText}</span>
         </div>
         <div className="meme-loading">
           <div className="loading-spinner" />
@@ -29,11 +61,14 @@ export const MemeBets: React.FC<Props> = ({ bets, loading, onAddTicker, existing
   if (bets.length === 0) return null;
 
   return (
-    <section className="meme-section">
+    <section className={`meme-section meme-${source}`}>
       <div className="meme-header">
         <div>
-          <h2 className="meme-title">CRAZY MEME BETS</h2>
-          <span className="meme-subtitle">Trending on StockTwits &amp; WSB &middot; ranked by hype</span>
+          <h2 className="meme-title">
+            {cfg.icon}
+            {cfg.title}
+          </h2>
+          <span className="meme-subtitle">{cfg.subtitle}</span>
         </div>
       </div>
 
@@ -104,18 +139,20 @@ export const MemeBets: React.FC<Props> = ({ bets, loading, onAddTicker, existing
 
               {/* Engagement stats inline */}
               <div className="meme-row-engagement">
-                <span className="meme-eng-item" title="Messages in last batch">
+                <span className="meme-eng-item" title="Messages / mentions">
                   <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12a1 1 0 011 1v8a1 1 0 01-1 1H5l-3 3V3a1 1 0 011-1z"/></svg>
-                  {bet.messageCount} posts
+                  {bet.messageCount} {cfg.postsLabel}
                 </span>
-                <span className="meme-eng-item" title="Total likes/upvotes across posts">
+                <span className="meme-eng-item" title="Total likes/upvotes">
                   <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.314C3.562-1.627 0 3.28 0 6.3c0 3.02 3.562 6.3 8 9.7 4.438-3.4 8-6.68 8-9.7 0-3.02-3.562-7.927-8-4.986z"/></svg>
-                  {bet.totalLikes} likes
+                  {bet.totalLikes} {cfg.likesLabel}
                 </span>
-                <span className="meme-eng-item" title="StockTwits watchers">
-                  <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3C4.5 3 1.7 5.1.3 8c1.4 2.9 4.2 5 7.7 5s6.3-2.1 7.7-5c-1.4-2.9-4.2-5-7.7-5zm0 8a3 3 0 110-6 3 3 0 010 6z"/></svg>
-                  {(bet.watchers / 1000).toFixed(1)}K watching
-                </span>
+                {bet.watchers != null && bet.watchers > 0 && (
+                  <span className="meme-eng-item" title="StockTwits watchers">
+                    <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3C4.5 3 1.7 5.1.3 8c1.4 2.9 4.2 5 7.7 5s6.3-2.1 7.7-5c-1.4-2.9-4.2-5-7.7-5zm0 8a3 3 0 110-6 3 3 0 010 6z"/></svg>
+                    {(bet.watchers / 1000).toFixed(1)}K watching
+                  </span>
+                )}
               </div>
 
               {isExpanded && (
@@ -133,7 +170,7 @@ export const MemeBets: React.FC<Props> = ({ bets, loading, onAddTicker, existing
 
                   {bet.topMessages.length > 0 && (
                     <div className="meme-chatter">
-                      <div className="feed-title">Top posts by upvotes</div>
+                      <div className="feed-title">{cfg.topPostsTitle}</div>
                       {bet.topMessages.map((msg, j) => (
                         <a
                           key={j}

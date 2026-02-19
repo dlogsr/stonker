@@ -6,10 +6,10 @@ export interface MemeBet {
   symbol: string;
   name: string;
   trendScore: number;
-  summary: string;
+  summary?: string;
   sentiment: 'bullish' | 'bearish' | 'neutral';
   bullPct: number;
-  watchers: number;
+  watchers?: number;
   beta?: number;
   peRatio?: number;
   marketCap?: string;
@@ -25,14 +25,16 @@ export interface MemeBet {
   topMessages: { body: string; sentiment: string; likes: number; url: string }[];
 }
 
-export function useMemeBets() {
+export function useMemeBets(source: 'stocktwits' | 'wsb') {
   const [bets, setBets] = useState<MemeBet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const endpoint = source === 'stocktwits' ? '/api/stocktwits/trending' : '/api/wsb/trending';
+
   const fetch_ = useCallback(async () => {
     try {
-      const res = await fetch('/api/wsb/trending');
+      const res = await fetch(endpoint);
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
       setBets(data.bets ?? []);
@@ -42,7 +44,7 @@ export function useMemeBets() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [endpoint]);
 
   useEffect(() => {
     fetch_();

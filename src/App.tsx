@@ -15,7 +15,8 @@ export const App: React.FC = () => {
   const { symbols, addSymbol, removeSymbol, importFromText } = useWatchlist();
   const { stocks, loading, error, refresh } = useStockData(symbols);
   const { authenticated, user, login, logout, syncWatchlist } = useAuth();
-  const memeBets = useMemeBets();
+  const stocktwitsBets = useMemeBets('stocktwits');
+  const wsbBets = useMemeBets('wsb');
   const [showImport, setShowImport] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
@@ -153,10 +154,19 @@ export const App: React.FC = () => {
         )}
 
         <MemeBets
-          bets={memeBets.bets}
-          loading={memeBets.loading}
+          bets={stocktwitsBets.bets}
+          loading={stocktwitsBets.loading}
           onAddTicker={addSymbol}
           existingSymbols={symbols}
+          source="stocktwits"
+        />
+
+        <MemeBets
+          bets={wsbBets.bets}
+          loading={wsbBets.loading}
+          onAddTicker={addSymbol}
+          existingSymbols={symbols}
+          source="wsb"
         />
       </main>
 
