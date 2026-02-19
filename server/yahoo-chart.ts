@@ -23,6 +23,14 @@ export interface YahooChartResult {
   fiftyTwoWeekHigh?: number;
   fiftyTwoWeekLow?: number;
   chart: ChartPoint[];
+  afterHoursChange: number;
+  afterHoursPercent: number;
+}
+
+export interface HistoricalChanges {
+  weekChange: number;
+  monthChange: number;
+  signals: string[];
 }
 
 export async function fetchYahooChart(symbol: string): Promise<YahooChartResult> {
@@ -60,6 +68,8 @@ export async function fetchYahooChart(symbol: string): Promise<YahooChartResult>
     chart.push({ t, p: closes[i]!, phase });
   }
 
+  const { afterHoursChange, afterHoursPercent } = computeAfterHours(chart, previousClose);
+
   return {
     symbol: meta.symbol ?? symbol,
     name: meta.shortName || meta.longName || symbol,
@@ -75,7 +85,95 @@ export async function fetchYahooChart(symbol: string): Promise<YahooChartResult>
     fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh,
     fiftyTwoWeekLow: meta.fiftyTwoWeekLow,
     chart,
+    afterHoursChange,
+    afterHoursPercent,
   };
+}
+
+function computeAfterHours(chart: ChartPoint[], previousClose: number): { afterHoursChange: number; afterHoursPercent: number } {
+  const regularPoints = chart.filter(p => p.phase === 'regular');
+  const postPoints = chart.filter(p => p.phase === 'post');
+  const prePoints = chart.filter(p => p.phase === 'pre');
+
+  if (postPoints.length > 0 && regularPoints.length > 0) {
+    const lastRegular = regularPoints[regularPoints.length - 1].p;
+    const lastPost = postPoints[postPoints.length - 1].p;
+    const diff = lastPost - lastRegular;
+    return {
+      afterHoursChange: diff,
+      afterHoursPercent: lastRegular ? (diff / lastRegular) * 100 : 0,
+    };
+  }
+  if (prePoints.length > 0 && previousClose > 0) {
+    const lastPre = prePoints[prePoints.length - 1].p;
+    const diff = lastPre - previousClose;
+    return {
+      afterHoursChange: diff,
+      afterHoursPercent: (diff / previousClose) * 100,
+    };
+  }
+  return { afterHoursChange: 0, afterHoursPercent: 0 };
+}
+
+export async function fetchHistoricalChanges(symbol: string): Promise<HistoricalChanges> {
+  try {
+    const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1mo`;
+    const res = await fetch(url, {
+      headers: YF_HEADERS,
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return { weekChange: 0, monthChange: 0, signals: [] };
+    const json: any = await res.json();
+    const result = json?.chart?.result?.[0];
+    if (!result) return { weekChange: 0, monthChange: 0, signals: [] };
+
+    const closes: (number | null)[] = result.indicators?.quote?.[0]?.close ?? [];
+    const validCloses = closes.filter((c): c is number => c != null);
+    if (validCloses.length < 2) return { weekChange: 0, monthChange: 0, signals: [] };
+
+    const current = validCloses[validCloses.length - 1];
+    const monthAgo = validCloses[0];
+    const weekIdx = Math.max(0, validCloses.length - 6);
+    const weekAgo = validCloses[weekIdx];
+
+    const weekChange = weekAgo ? ((current - weekAgo) / weekAgo) * 100 : 0;
+    const monthChange = monthAgo ? ((current - monthAgo) / monthAgo) * 100 : 0;
+
+    const signals: string[] = [];
+    const meta = result.meta;
+    const fiftyTwoHigh = meta?.fiftyTwoWeekHigh;
+    const fiftyTwoLow = meta?.fiftyTwoWeekLow;
+
+    if (fiftyTwoHigh && current >= fiftyTwoHigh * 0.95) signals.push('52W HIGH');
+    if (fiftyTwoLow && current <= fiftyTwoLow * 1.05) signals.push('52W LOW');
+
+    if (validCloses.length >= 20) {
+      const sma5 = avg(validCloses.slice(-5));
+      const sma20 = avg(validCloses.slice(-20));
+      const prevSma5 = avg(validCloses.slice(-6, -1));
+      const prevSma20 = avg(validCloses.slice(-21, -1));
+      if (prevSma5 <= prevSma20 && sma5 > sma20) signals.push('SMA CROSS UP');
+      if (prevSma5 >= prevSma20 && sma5 < sma20) signals.push('SMA CROSS DN');
+    }
+
+    if (validCloses.length >= 4) {
+      const last4 = validCloses.slice(-4);
+      const allUp = last4[1] > last4[0] && last4[2] > last4[1] && last4[3] > last4[2];
+      const allDn = last4[1] < last4[0] && last4[2] < last4[1] && last4[3] < last4[2];
+      if (allUp) signals.push('MOMENTUM UP');
+      if (allDn) signals.push('MOMENTUM DN');
+    }
+
+    if (Math.abs(weekChange) >= 10) signals.push('BIG WEEK');
+
+    return { weekChange, monthChange, signals };
+  } catch {
+    return { weekChange: 0, monthChange: 0, signals: [] };
+  }
+}
+
+function avg(arr: number[]): number {
+  return arr.reduce((a, b) => a + b, 0) / arr.length;
 }
 
 export async function searchYahoo(query: string) {

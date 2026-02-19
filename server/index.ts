@@ -7,7 +7,7 @@ import { fetchSentiment } from './sentiment.js';
 import { authRouter } from './auth.js';
 import { financeRouter } from './google-finance.js';
 import { wsbRouter } from './wsb-trending.js';
-import { fetchYahooChart, searchYahoo } from './yahoo-chart.js';
+import { fetchYahooChart, fetchHistoricalChanges, searchYahoo } from './yahoo-chart.js';
 
 // Node's native fetch doesn't respect HTTP_PROXY env vars — wire it up manually
 const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy;
@@ -49,11 +49,17 @@ app.get('/api/quotes', async (req, res) => {
   try {
     const results = await Promise.allSettled(
       symbols.map(async (symbol) => {
-        const data = await fetchYahooChart(symbol);
+        const [data, hist] = await Promise.all([
+          fetchYahooChart(symbol),
+          fetchHistoricalChanges(symbol),
+        ]);
         return {
           ...data,
           marketCap: formatLargeNumber(data.marketCap),
           volume: formatLargeNumber(data.volume),
+          weekChange: hist.weekChange,
+          monthChange: hist.monthChange,
+          signals: hist.signals,
         };
       })
     );

@@ -19,7 +19,14 @@ export interface StockQuote {
   fiftyTwoWeekHigh?: number;
   fiftyTwoWeekLow?: number;
   chart?: ChartPoint[];
+  afterHoursChange?: number;
+  afterHoursPercent?: number;
+  weekChange?: number;
+  monthChange?: number;
+  signals?: string[];
 }
+
+export type SortMode = 'default' | 'pctChange' | 'dollarChange' | 'sentiment';
 
 export interface SentimentData {
   summary: string;
