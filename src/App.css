@@ -324,7 +324,26 @@
   border-bottom: none;
 }
 
-/* After-hours swing tinting */
+/* Trend tinting (overall day change) */
+.stock-row.trend-up {
+  background: rgba(34, 197, 94, 0.04);
+  border-left: 2px solid rgba(34, 197, 94, 0.3);
+}
+
+.stock-row.trend-dn {
+  background: rgba(239, 68, 68, 0.04);
+  border-left: 2px solid rgba(239, 68, 68, 0.3);
+}
+
+.stock-row.trend-up:hover {
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.stock-row.trend-dn:hover {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+/* After-hours swing tinting (overrides trend when AH move is significant) */
 .stock-row.swing-up {
   background: rgba(34, 197, 94, 0.06);
   border-left: 2px solid var(--green);
@@ -1018,6 +1037,16 @@ a.feed-text:hover {
   padding: 24px;
   display: flex;
   justify-content: center;
+}
+
+.meme-empty {
+  padding: 20px 12px;
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  margin: 0 4px;
 }
 
 .meme-list {

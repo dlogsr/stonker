@@ -5,6 +5,7 @@ import { Sparkline } from './Sparkline';
 interface Props {
   bets: MemeBet[];
   loading: boolean;
+  error?: string | null;
   onAddTicker: (symbol: string) => void;
   existingSymbols: string[];
   source: 'stocktwits' | 'wsb';
@@ -40,7 +41,7 @@ const CONFIG = {
   },
 };
 
-export const MemeBets: React.FC<Props> = ({ bets, loading, onAddTicker, existingSymbols, source }) => {
+export const MemeBets: React.FC<Props> = ({ bets, loading, error, onAddTicker, existingSymbols, source }) => {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const cfg = CONFIG[source];
 
@@ -48,8 +49,10 @@ export const MemeBets: React.FC<Props> = ({ bets, loading, onAddTicker, existing
     return (
       <section className={`meme-section meme-${source}`}>
         <div className="meme-header">
-          <h2 className="meme-title">{cfg.title}</h2>
-          <span className="meme-subtitle">{cfg.loadingText}</span>
+          <div>
+            <h2 className="meme-title">{cfg.icon}{cfg.title}</h2>
+            <span className="meme-subtitle">{cfg.loadingText}</span>
+          </div>
         </div>
         <div className="meme-loading">
           <div className="loading-spinner" />
@@ -58,7 +61,25 @@ export const MemeBets: React.FC<Props> = ({ bets, loading, onAddTicker, existing
     );
   }
 
-  if (bets.length === 0) return null;
+  if (error || bets.length === 0) {
+    return (
+      <section className={`meme-section meme-${source}`}>
+        <div className="meme-header">
+          <div>
+            <h2 className="meme-title">{cfg.icon}{cfg.title}</h2>
+            <span className="meme-subtitle">{cfg.subtitle}</span>
+          </div>
+        </div>
+        <div className="meme-empty">
+          {error === 'needs_config'
+            ? 'Add REDDIT_CLIENT_ID & REDDIT_CLIENT_SECRET env vars to enable WSB scraping'
+            : error
+              ? 'Reddit API unavailable — retrying in 5m'
+              : 'No trending tickers right now'}
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className={`meme-section meme-${source}`}>

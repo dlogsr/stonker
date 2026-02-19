@@ -35,7 +35,15 @@ export function useMemeBets(source: 'stocktwits' | 'wsb') {
   const fetch_ = useCallback(async () => {
     try {
       const res = await fetch(endpoint);
-      if (!res.ok) throw new Error('Failed to fetch');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        if (body.needsConfig) {
+          setError('needs_config');
+        } else {
+          setError('Could not load trending bets');
+        }
+        return;
+      }
       const data = await res.json();
       setBets(data.bets ?? []);
       setError(null);

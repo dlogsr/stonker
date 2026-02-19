@@ -184,6 +184,7 @@ export const App: React.FC = () => {
             <MemeBets
               bets={stocktwitsBets.bets}
               loading={stocktwitsBets.loading}
+              error={stocktwitsBets.error}
               onAddTicker={addSymbol}
               existingSymbols={symbols}
               source="stocktwits"
@@ -192,6 +193,7 @@ export const App: React.FC = () => {
             <MemeBets
               bets={wsbBets.bets}
               loading={wsbBets.loading}
+              error={wsbBets.error}
               onAddTicker={addSymbol}
               existingSymbols={symbols}
               source="wsb"
