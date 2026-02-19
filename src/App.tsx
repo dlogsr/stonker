@@ -45,6 +45,8 @@ export const App: React.FC = () => {
 
     return [...list].sort((a, b) => {
       switch (sortMode) {
+        case 'alpha':
+          return a.quote.symbol.localeCompare(b.quote.symbol);
         case 'pctChange':
           return Math.abs(b.quote.changePercent) - Math.abs(a.quote.changePercent);
         case 'dollarChange':
@@ -117,6 +119,7 @@ export const App: React.FC = () => {
               <span className="sort-label">Sort:</span>
               {([
                 ['default', 'Default'],
+                ['alpha', 'A-Z'],
                 ['pctChange', '% Change'],
                 ['dollarChange', '$ Change'],
                 ['sentiment', 'Bull/Bear'],

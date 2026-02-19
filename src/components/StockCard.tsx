@@ -103,12 +103,13 @@ export const StockCard: React.FC<Props> = ({ data, onRemove }) => {
             {quote.marketCap && <Stat label="Mkt Cap" value={quote.marketCap} />}
             {quote.fiftyTwoWeekHigh != null && <Stat label="52W H" value={`$${quote.fiftyTwoWeekHigh.toFixed(2)}`} />}
             {quote.fiftyTwoWeekLow != null && <Stat label="52W L" value={`$${quote.fiftyTwoWeekLow.toFixed(2)}`} />}
+            {quote.earningsDate && <Stat label="Earnings" value={quote.earningsDate} />}
           </div>
 
           {sentiment && sentiment.sources.length > 0 && (
             <div className="detail-feed">
               <div className="feed-title">Recent chatter</div>
-              {sentiment.sources.slice(0, 6).map((src, i) => (
+              {sentiment.sources.slice(0, 8).map((src, i) => (
                 <div key={i} className={`feed-item feed-${src.sentiment}`}>
                   <span className={`feed-badge badge-${src.type}`}>{src.type === 'stocktwits' ? 'ST' : src.type === 'reddit' ? 'WSB' : 'News'}</span>
                   {src.url ? (

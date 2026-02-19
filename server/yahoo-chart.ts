@@ -176,6 +176,26 @@ function avg(arr: number[]): number {
   return arr.reduce((a, b) => a + b, 0) / arr.length;
 }
 
+export async function fetchEarningsDate(symbol: string): Promise<string | null> {
+  try {
+    const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=calendarEvents`;
+    const res = await fetch(url, {
+      headers: YF_HEADERS,
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return null;
+    const json: any = await res.json();
+    const dates = json?.quoteSummary?.result?.[0]?.calendarEvents?.earnings?.earningsDate;
+    if (!dates || dates.length === 0) return null;
+    const epoch = dates[0]?.raw;
+    if (!epoch) return null;
+    const d = new Date(epoch * 1000);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch {
+    return null;
+  }
+}
+
 export async function searchYahoo(query: string) {
   const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0`;
   const res = await fetch(url, {

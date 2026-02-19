@@ -104,7 +104,7 @@ async function fetchGoogleNews(symbol: string): Promise<RawSource[]> {
     const items: RawSource[] = [];
     const re = /<item>[\s\S]*?<title>([\s\S]*?)<\/title>[\s\S]*?<link>([\s\S]*?)<\/link>/g;
     let m;
-    while ((m = re.exec(xml)) !== null && items.length < 3) {
+    while ((m = re.exec(xml)) !== null && items.length < 5) {
       items.push({
         type: 'news',
         title: m[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim(),
@@ -172,10 +172,24 @@ export async function fetchSentiment(symbol: string): Promise<SentimentData> {
     overallSentiment = scoreSentiment(allSources.map(s => s.title).join(' '));
   }
 
+  // Interleave sources: every 3 social items, insert 1 news item (~25% news)
+  const social = scoredSources.filter(s => s.type !== 'news');
+  const news = scoredSources.filter(s => s.type === 'news');
+  const interleaved: typeof scoredSources = [];
+  let ni = 0;
+  for (let i = 0; i < social.length; i++) {
+    interleaved.push(social[i]);
+    if ((i + 1) % 3 === 0 && ni < news.length) {
+      interleaved.push(news[ni++]);
+    }
+  }
+  // Append any remaining news at the end
+  while (ni < news.length) interleaved.push(news[ni++]);
+
   return {
     summary: generateSummary(symbol, scoredSources, stBull, stBear),
     sentiment: overallSentiment,
-    sources: scoredSources.map(s => ({
+    sources: interleaved.map(s => ({
       type: s.type as 'stocktwits' | 'reddit' | 'news',
       title: s.title,
       url: s.url,
