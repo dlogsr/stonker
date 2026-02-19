@@ -25,7 +25,7 @@ const CONFIG = {
     ),
   },
   wsb: {
-    title: 'WSB DEGENERATES',
+    title: 'WSB CHAOS',
     subtitle: 'Trending on r/wallstreetbets \u00b7 ranked by hype',
     loadingText: 'scraping WSB...',
     postsLabel: 'mentions',

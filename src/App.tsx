@@ -21,6 +21,7 @@ export const App: React.FC = () => {
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('default');
+  const [activeTab, setActiveTab] = useState<'stable' | 'meme'>('stable');
 
   const handleSyncGoogle = useCallback(async () => {
     setSyncing(true);
@@ -84,90 +85,119 @@ export const App: React.FC = () => {
       )}
 
       <main className="app-main">
-        <AddStock onAdd={addSymbol} existingSymbols={symbols} />
-
-        {error && (
-          <div className="error-banner">
-            <span>{error}</span>
-            <button onClick={refresh}>Retry</button>
-          </div>
-        )}
-
-        {loading && orderedStocks.length === 0 && (
-          <div className="loading-state">
-            <div className="loading-spinner" />
-            <p>Fetching stock data...</p>
-          </div>
-        )}
-
-        {!loading && symbols.length === 0 && (
-          <div className="empty-state">
-            <div className="empty-icon">
-              <svg width="48" height="48" viewBox="0 0 100 100">
-                <rect width="100" height="100" rx="16" fill="var(--bg-card)"/>
-                <path d="M20 70 L35 45 L50 55 L65 30 L80 35" stroke="var(--text-muted)" strokeWidth="6" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <h3>No tickers yet</h3>
-            <p>Add stocks above, sign in with Google to sync your watchlist, or use Import</p>
-          </div>
-        )}
-
-        {symbols.length > 0 && (
-          <div className="section-header">
-            <h2 className="section-title stable-title">STABLE STONKS</h2>
-            <div className="sort-controls">
-              <span className="sort-label">Sort:</span>
-              {([
-                ['default', 'Default'],
-                ['alpha', 'A-Z'],
-                ['pctChange', '% Change'],
-                ['dollarChange', '$ Change'],
-                ['sentiment', 'Bull/Bear'],
-              ] as [SortMode, string][]).map(([mode, label]) => (
-                <button
-                  key={mode}
-                  className={`sort-chip ${sortMode === mode ? 'active' : ''}`}
-                  onClick={() => setSortMode(mode)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="stock-list">
-          {orderedStocks.map(stock => (
-            <StockCard
-              key={stock.quote.symbol}
-              data={stock}
-              onRemove={removeSymbol}
-            />
-          ))}
+        <div className="tab-bar">
+          <button
+            className={`tab-btn ${activeTab === 'stable' ? 'active' : ''}`}
+            onClick={() => setActiveTab('stable')}
+          >
+            <svg width="14" height="14" viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 70 L30 45 L50 55 L70 25 L85 30" />
+            </svg>
+            STABLE STONKS
+            {symbols.length > 0 && <span className="tab-count">{symbols.length}</span>}
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'meme' ? 'active' : ''}`}
+            onClick={() => setActiveTab('meme')}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+            </svg>
+            CRAZY MEME BETS
+          </button>
         </div>
 
-        {orderedStocks.length > 0 && (
-          <div className="last-updated">
-            Auto-refreshes every 30s &middot; Sentiment updates every 5m
+        {activeTab === 'stable' && (
+          <div className="tab-panel">
+            <AddStock onAdd={addSymbol} existingSymbols={symbols} />
+
+            {error && (
+              <div className="error-banner">
+                <span>{error}</span>
+                <button onClick={refresh}>Retry</button>
+              </div>
+            )}
+
+            {loading && orderedStocks.length === 0 && (
+              <div className="loading-state">
+                <div className="loading-spinner" />
+                <p>Fetching stock data...</p>
+              </div>
+            )}
+
+            {!loading && symbols.length === 0 && (
+              <div className="empty-state">
+                <div className="empty-icon">
+                  <svg width="48" height="48" viewBox="0 0 100 100">
+                    <rect width="100" height="100" rx="16" fill="var(--bg-card)"/>
+                    <path d="M20 70 L35 45 L50 55 L65 30 L80 35" stroke="var(--text-muted)" strokeWidth="6" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+                <h3>No tickers yet</h3>
+                <p>Add stocks above, sign in with Google to sync your watchlist, or use Import</p>
+              </div>
+            )}
+
+            {symbols.length > 0 && (
+              <div className="section-header">
+                <div className="sort-controls">
+                  <span className="sort-label">Sort:</span>
+                  {([
+                    ['default', 'Default'],
+                    ['alpha', 'A-Z'],
+                    ['pctChange', '% Change'],
+                    ['dollarChange', '$ Change'],
+                    ['sentiment', 'Bull/Bear'],
+                  ] as [SortMode, string][]).map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      className={`sort-chip ${sortMode === mode ? 'active' : ''}`}
+                      onClick={() => setSortMode(mode)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="stock-list">
+              {orderedStocks.map(stock => (
+                <StockCard
+                  key={stock.quote.symbol}
+                  data={stock}
+                  onRemove={removeSymbol}
+                />
+              ))}
+            </div>
+
+            {orderedStocks.length > 0 && (
+              <div className="last-updated">
+                Auto-refreshes every 30s &middot; Sentiment updates every 5m
+              </div>
+            )}
           </div>
         )}
 
-        <MemeBets
-          bets={stocktwitsBets.bets}
-          loading={stocktwitsBets.loading}
-          onAddTicker={addSymbol}
-          existingSymbols={symbols}
-          source="stocktwits"
-        />
+        {activeTab === 'meme' && (
+          <div className="tab-panel">
+            <MemeBets
+              bets={stocktwitsBets.bets}
+              loading={stocktwitsBets.loading}
+              onAddTicker={addSymbol}
+              existingSymbols={symbols}
+              source="stocktwits"
+            />
 
-        <MemeBets
-          bets={wsbBets.bets}
-          loading={wsbBets.loading}
-          onAddTicker={addSymbol}
-          existingSymbols={symbols}
-          source="wsb"
-        />
+            <MemeBets
+              bets={wsbBets.bets}
+              loading={wsbBets.loading}
+              onAddTicker={addSymbol}
+              existingSymbols={symbols}
+              source="wsb"
+            />
+          </div>
+        )}
       </main>
 
       <ImportModal
