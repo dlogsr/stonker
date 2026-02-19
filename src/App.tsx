@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Header } from './components/Header';
 import { StockCard } from './components/StockCard';
 import { AddStock } from './components/AddStock';
@@ -8,6 +8,7 @@ import { useWatchlist } from './hooks/useWatchlist';
 import { useStockData } from './hooks/useStockData';
 import { useAuth } from './hooks/useAuth';
 import { useMemeBets } from './hooks/useMemeBets';
+import { SortMode, StockData } from './types';
 import './App.css';
 
 export const App: React.FC = () => {
@@ -18,6 +19,7 @@ export const App: React.FC = () => {
   const [showImport, setShowImport] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>('default');
 
   const handleSyncGoogle = useCallback(async () => {
     setSyncing(true);
@@ -33,10 +35,29 @@ export const App: React.FC = () => {
     setTimeout(() => setSyncMessage(null), 5000);
   }, [syncWatchlist, importFromText]);
 
-  // Sort stocks by the order in the symbols array
-  const orderedStocks = symbols
-    .map(s => stocks.get(s))
-    .filter((s): s is NonNullable<typeof s> => s != null);
+  // Sort stocks
+  const orderedStocks = useMemo(() => {
+    const list = symbols
+      .map(s => stocks.get(s))
+      .filter((s): s is StockData => s != null);
+
+    if (sortMode === 'default') return list;
+
+    return [...list].sort((a, b) => {
+      switch (sortMode) {
+        case 'pctChange':
+          return Math.abs(b.quote.changePercent) - Math.abs(a.quote.changePercent);
+        case 'dollarChange':
+          return Math.abs(b.quote.change) - Math.abs(a.quote.change);
+        case 'sentiment': {
+          const sentVal = (s: StockData) =>
+            s.sentiment?.sentiment === 'bullish' ? 2 : s.sentiment?.sentiment === 'bearish' ? 0 : 1;
+          return sentVal(b) - sentVal(a);
+        }
+        default: return 0;
+      }
+    });
+  }, [symbols, stocks, sortMode]);
 
   return (
     <div className="app">
@@ -86,6 +107,29 @@ export const App: React.FC = () => {
             </div>
             <h3>No tickers yet</h3>
             <p>Add stocks above, sign in with Google to sync your watchlist, or use Import</p>
+          </div>
+        )}
+
+        {symbols.length > 0 && (
+          <div className="section-header">
+            <h2 className="section-title stable-title">STABLE STONKS</h2>
+            <div className="sort-controls">
+              <span className="sort-label">Sort:</span>
+              {([
+                ['default', 'Default'],
+                ['pctChange', '% Change'],
+                ['dollarChange', '$ Change'],
+                ['sentiment', 'Bull/Bear'],
+              ] as [SortMode, string][]).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  className={`sort-chip ${sortMode === mode ? 'active' : ''}`}
+                  onClick={() => setSortMode(mode)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

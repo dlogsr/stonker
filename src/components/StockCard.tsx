@@ -12,8 +12,19 @@ export const StockCard: React.FC<Props> = ({ data, onRemove }) => {
   const { quote, sentiment } = data;
   const isPositive = quote.change >= 0;
 
+  // After-hours swing detection for row tinting
+  const ahPct = quote.afterHoursPercent ?? 0;
+  const hasSwing = Math.abs(ahPct) >= 0.5;
+  const swingClass = hasSwing ? (ahPct > 0 ? 'swing-up' : 'swing-dn') : '';
+
+  const fmtPct = (v: number | undefined) => {
+    if (v == null) return '--';
+    const s = v >= 0 ? '+' : '';
+    return `${s}${v.toFixed(1)}%`;
+  };
+
   return (
-    <div className={`stock-row ${expanded ? 'expanded' : ''}`} onClick={() => setExpanded(!expanded)}>
+    <div className={`stock-row ${expanded ? 'expanded' : ''} ${swingClass}`} onClick={() => setExpanded(!expanded)}>
       {/* Main row: symbol | chart | price */}
       <div className="stock-row-main">
         <div className="stock-row-left">
@@ -43,6 +54,26 @@ export const StockCard: React.FC<Props> = ({ data, onRemove }) => {
         >
           &times;
         </button>
+      </div>
+
+      {/* Data indicators row */}
+      <div className="stock-row-indicators">
+        <span className={`ind-chip ${(quote.weekChange ?? 0) >= 0 ? 'ind-up' : 'ind-dn'}`}>
+          1W {fmtPct(quote.weekChange)}
+        </span>
+        <span className={`ind-chip ${(quote.monthChange ?? 0) >= 0 ? 'ind-up' : 'ind-dn'}`}>
+          1M {fmtPct(quote.monthChange)}
+        </span>
+        {hasSwing && (
+          <span className={`ind-chip ${ahPct > 0 ? 'ind-up' : 'ind-dn'}`}>
+            AH {fmtPct(ahPct)}
+          </span>
+        )}
+        {quote.signals?.map(sig => (
+          <span key={sig} className={`ind-chip ind-signal ${sig.includes('UP') || sig.includes('HIGH') ? 'ind-up' : sig.includes('DN') || sig.includes('LOW') ? 'ind-dn' : 'ind-neutral'}`}>
+            {sig}
+          </span>
+        ))}
       </div>
 
       {/* Sentiment pill row */}
