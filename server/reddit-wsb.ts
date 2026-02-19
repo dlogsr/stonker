@@ -55,23 +55,97 @@ export interface WsbBet {
   trendScore: number;
   sentiment: 'bullish' | 'bearish' | 'neutral';
   bullPct: number;
-  // Price + chart
   price: number;
   change: number;
   changePercent: number;
   previousClose: number;
   chart: ChartPoint[];
-  // Engagement
   messageCount: number;
   totalLikes: number;
   topMessages: { body: string; sentiment: string; likes: number; url: string }[];
+}
+
+// --- Reddit OAuth (app-only) token cache ---
+let cachedToken: { token: string; expiresAt: number } | null = null;
+
+async function getRedditToken(): Promise<string | null> {
+  const clientId = process.env.REDDIT_CLIENT_ID;
+  const clientSecret = process.env.REDDIT_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return null;
+
+  if (cachedToken && Date.now() < cachedToken.expiresAt - 60_000) {
+    return cachedToken.token;
+  }
+
+  const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+  const res = await fetch('https://www.reddit.com/api/v1/access_token', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${auth}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': 'stonker:v1.0.0 (by /u/stonker-app)',
+    },
+    body: 'grant_type=client_credentials',
+    signal: AbortSignal.timeout(8000),
+  });
+
+  if (!res.ok) {
+    console.error('Reddit OAuth failed:', res.status);
+    return null;
+  }
+
+  const data = await res.json() as any;
+  cachedToken = {
+    token: data.access_token,
+    expiresAt: Date.now() + (data.expires_in ?? 3600) * 1000,
+  };
+  return cachedToken.token;
+}
+
+async function fetchRedditPosts(): Promise<RedditPost[] | null> {
+  // Try OAuth first (works from datacenters)
+  const token = await getRedditToken().catch(() => null);
+  if (token) {
+    const res = await fetch(
+      'https://oauth.reddit.com/r/wallstreetbets/hot?limit=75',
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'User-Agent': 'stonker:v1.0.0 (by /u/stonker-app)',
+        },
+        signal: AbortSignal.timeout(10000),
+      }
+    );
+    if (res.ok) {
+      const data = await res.json() as any;
+      return (data?.data?.children ?? []).map((c: any) => c.data);
+    }
+    console.error('Reddit OAuth listing failed:', res.status);
+  }
+
+  // Fallback: public JSON (works from residential IPs / local dev)
+  const res = await fetch(
+    'https://www.reddit.com/r/wallstreetbets/hot.json?limit=75',
+    {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+      signal: AbortSignal.timeout(10000),
+    }
+  );
+  if (res.ok) {
+    const data = await res.json() as any;
+    return (data?.data?.children ?? []).map((c: any) => c.data);
+  }
+
+  console.error('Reddit public API failed:', res.status);
+  return null;
 }
 
 /** Extract $TICKER and ALL_CAPS tickers from text */
 function extractTickers(text: string): string[] {
   const tickers: string[] = [];
 
-  // Match $SYMBOL patterns (most reliable)
   const dollarMatches = text.matchAll(/\$([A-Z]{1,5})\b/g);
   for (const m of dollarMatches) {
     const sym = m[1];
@@ -80,8 +154,6 @@ function extractTickers(text: string): string[] {
     }
   }
 
-  // Match standalone ALL_CAPS words (2-5 chars) that look like tickers
-  // Only if preceded/followed by whitespace or punctuation
   const capsMatches = text.matchAll(/(?:^|\s)([A-Z]{2,5})(?:\s|$|[.,!?;:])/g);
   for (const m of capsMatches) {
     const sym = m[1];
@@ -95,36 +167,26 @@ function extractTickers(text: string): string[] {
 
 redditWsbRouter.get('/trending', async (_req, res) => {
   try {
-    // 1. Fetch hot posts from r/wallstreetbets
-    const redditRes = await fetch(
-      'https://www.reddit.com/r/wallstreetbets/hot.json?limit=75',
-      {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; stonker/1.0)',
-        },
-        signal: AbortSignal.timeout(10000),
-      }
-    );
+    const posts = await fetchRedditPosts();
 
-    if (!redditRes.ok) {
-      res.status(502).json({ error: 'Reddit API unavailable' });
+    if (!posts) {
+      res.status(502).json({ error: 'Reddit API unavailable', needsConfig: !process.env.REDDIT_CLIENT_ID });
       return;
     }
 
-    const redditData = await redditRes.json() as any;
-    const posts: RedditPost[] = (redditData?.data?.children ?? [])
-      .map((c: any) => c.data)
-      .filter((p: RedditPost) => !p.link_flair_text?.toLowerCase().includes('meme'));
+    const filtered = posts.filter(
+      (p: RedditPost) => !p.link_flair_text?.toLowerCase().includes('meme')
+    );
 
-    if (posts.length === 0) {
+    if (filtered.length === 0) {
       res.json({ bets: [] });
       return;
     }
 
-    // 2. Extract tickers from all posts
+    // Extract tickers from all posts
     const tickerMap = new Map<string, TickerMention>();
 
-    for (const post of posts) {
+    for (const post of filtered) {
       const combined = `${post.title} ${post.selftext?.substring(0, 500) ?? ''}`;
       const tickers = extractTickers(combined);
 
@@ -149,7 +211,7 @@ redditWsbRouter.get('/trending', async (_req, res) => {
       }
     }
 
-    // 3. Rank by mention count * log(score), take top 8
+    // Rank by mention count * log(score), take top 8
     const ranked = [...tickerMap.values()]
       .map(t => ({
         ...t,
@@ -163,12 +225,11 @@ redditWsbRouter.get('/trending', async (_req, res) => {
       return;
     }
 
-    // 4. Enrich with Yahoo chart data
+    // Enrich with Yahoo chart data
     const enriched = await Promise.all(
       ranked.map(async (ticker, i): Promise<WsbBet> => {
         const chartData = await fetchYahooChart(ticker.symbol).catch(() => null);
 
-        // Sort posts by score for top messages
         const sortedPosts = [...ticker.posts].sort((a, b) => b.score - a.score);
         const topMessages = sortedPosts.slice(0, 4).map(p => ({
           body: p.title,
@@ -177,7 +238,6 @@ redditWsbRouter.get('/trending', async (_req, res) => {
           url: p.url,
         }));
 
-        // Rough sentiment from post scores (high upvotes = bullish consensus)
         const avgScore = ticker.totalScore / ticker.mentions;
         const bullPct = Math.min(90, Math.max(10, Math.round(50 + Math.log2(Math.max(avgScore, 1)) * 5)));
 
@@ -200,7 +260,6 @@ redditWsbRouter.get('/trending', async (_req, res) => {
       })
     );
 
-    // Filter out symbols where Yahoo didn't find a valid stock (price=0 likely means invalid ticker)
     const valid = enriched.filter(b => b.price > 0);
 
     res.json({ bets: valid });
