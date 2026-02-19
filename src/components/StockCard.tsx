@@ -12,11 +12,10 @@ export const StockCard: React.FC<Props> = ({ data, onRemove }) => {
   const { quote, sentiment } = data;
   const isPositive = quote.change >= 0;
 
-  // Row tinting: based on overall day change (green/red), AH swing overrides if significant
+  // Row tinting: always based on overall day change
   const ahPct = quote.afterHoursPercent ?? 0;
   const hasSwing = Math.abs(ahPct) >= 0.5;
   const trendClass = isPositive ? 'trend-up' : 'trend-dn';
-  const swingClass = hasSwing ? (ahPct > 0 ? 'swing-up' : 'swing-dn') : '';
 
   const fmtPct = (v: number | undefined) => {
     if (v == null) return '--';
@@ -25,7 +24,7 @@ export const StockCard: React.FC<Props> = ({ data, onRemove }) => {
   };
 
   return (
-    <div className={`stock-row ${expanded ? 'expanded' : ''} ${swingClass || trendClass}`} onClick={() => setExpanded(!expanded)}>
+    <div className={`stock-row ${expanded ? 'expanded' : ''} ${trendClass}`} onClick={() => setExpanded(!expanded)}>
       {/* Main row: symbol | chart | price */}
       <div className="stock-row-main">
         <div className="stock-row-left">
