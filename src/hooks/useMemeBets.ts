@@ -22,7 +22,7 @@ export interface MemeBet {
   // Engagement volume
   messageCount: number;
   totalLikes: number;
-  topMessages: { body: string; sentiment: string; likes: number }[];
+  topMessages: { body: string; sentiment: string; likes: number; url: string }[];
 }
 
 export function useMemeBets() {

@@ -24,7 +24,7 @@ interface MemeBet {
   // Engagement volume
   messageCount: number;
   totalLikes: number;
-  topMessages: { body: string; sentiment: string; likes: number }[];
+  topMessages: { body: string; sentiment: string; likes: number; url: string }[];
 }
 
 wsbRouter.get('/trending', async (_req, res) => {
@@ -98,26 +98,41 @@ interface StreamResult {
   bullPct: number;
   messageCount: number;
   totalLikes: number;
-  topMessages: { body: string; sentiment: string; likes: number }[];
+  topMessages: { body: string; sentiment: string; likes: number; url: string }[];
 }
 
 async function fetchSymbolStream(symbol: string): Promise<StreamResult> {
   try {
-    const url = `https://api.stocktwits.com/api/2/streams/symbol/${encodeURIComponent(symbol)}.json`;
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!res.ok) return { bullPct: 50, messageCount: 0, totalLikes: 0, topMessages: [] };
-    const data = await res.json() as any;
-    const msgs = data?.messages ?? [];
+    const allMsgs: any[] = [];
+    let cursor: number | null = null;
+
+    // Fetch up to 3 pages (30 msgs each = ~90 max)
+    for (let page = 0; page < 3; page++) {
+      const params = cursor ? `&max=${cursor}` : '';
+      const url = `https://api.stocktwits.com/api/2/streams/symbol/${encodeURIComponent(symbol)}.json?limit=30${params}`;
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) break;
+      const data = await res.json() as any;
+      const msgs = data?.messages ?? [];
+      if (msgs.length === 0) break;
+      allMsgs.push(...msgs);
+      // Stop if we got fewer than a full page
+      if (msgs.length < 30) break;
+      cursor = msgs[msgs.length - 1]?.id;
+      if (!cursor) break;
+    }
+
+    if (allMsgs.length === 0) return { bullPct: 50, messageCount: 0, totalLikes: 0, topMessages: [] };
 
     let bull = 0;
     let bear = 0;
     let totalLikes = 0;
-    const topMessages: { body: string; sentiment: string; likes: number }[] = [];
+    const candidates: { body: string; sentiment: string; likes: number; url: string }[] = [];
 
-    for (const m of msgs) {
+    for (const m of allMsgs) {
       const st = ((m.entities ?? null)?.sentiment ?? null)?.basic;
       if (st === 'Bullish') bull++;
       else if (st === 'Bearish') bear++;
@@ -125,21 +140,21 @@ async function fetchSymbolStream(symbol: string): Promise<StreamResult> {
       const likes = m.likes?.total ?? 0;
       totalLikes += likes;
 
-      if (topMessages.length < 4) {
-        topMessages.push({
-          body: (m.body ?? '').substring(0, 160),
-          sentiment: st === 'Bullish' ? 'bullish' : st === 'Bearish' ? 'bearish' : 'neutral',
-          likes,
-        });
-      }
+      candidates.push({
+        body: (m.body ?? '').substring(0, 160),
+        sentiment: st === 'Bullish' ? 'bullish' : st === 'Bearish' ? 'bearish' : 'neutral',
+        likes,
+        url: `https://stocktwits.com/${m.user?.username ?? 'user'}/message/${m.id}`,
+      });
     }
 
-    // Sort top messages by likes descending so most-upvoted appear first
-    topMessages.sort((a, b) => b.likes - a.likes);
+    // Top 4 messages by likes
+    candidates.sort((a, b) => b.likes - a.likes);
+    const topMessages = candidates.slice(0, 4);
 
     const total = bull + bear;
     const bullPct = total > 0 ? Math.round((bull / total) * 100) : 50;
-    return { bullPct, messageCount: msgs.length, totalLikes, topMessages };
+    return { bullPct, messageCount: allMsgs.length, totalLikes, topMessages };
   } catch {
     return { bullPct: 50, messageCount: 0, totalLikes: 0, topMessages: [] };
   }
