@@ -7,7 +7,8 @@
     "dev": "concurrently \"vite\" \"tsx watch server/index.ts\"",
     "dev:client": "vite",
     "dev:server": "tsx watch server/index.ts",
-    "build": "vite build",
+    "build": "vite build && tsc -p tsconfig.server.build.json",
+    "start": "node dist-server/server/index.js",
     "preview": "vite preview",
     "server": "tsx server/index.ts"
   },
