@@ -23,6 +23,35 @@ export const App: React.FC = () => {
   const [sortMode, setSortMode] = useState<SortMode>('default');
   const [activeTab, setActiveTab] = useState<'stable' | 'meme'>('stable');
 
+  const handleExportCSV = useCallback(() => {
+    if (symbols.length === 0) return;
+    const rows = [['Symbol', 'Name', 'Price', 'Change', 'Change %', 'Market Cap', 'Volume']];
+    for (const sym of symbols) {
+      const s = stocks.get(sym);
+      if (s) {
+        rows.push([
+          s.quote.symbol,
+          s.quote.name,
+          s.quote.price.toFixed(2),
+          s.quote.change.toFixed(2),
+          s.quote.changePercent.toFixed(2) + '%',
+          s.quote.marketCap ?? '',
+          s.quote.volume ?? '',
+        ]);
+      } else {
+        rows.push([sym, '', '', '', '', '', '']);
+      }
+    }
+    const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `stonker-watchlist-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [symbols, stocks]);
+
   const handleSyncGoogle = useCallback(async () => {
     setSyncing(true);
     setSyncMessage(null);
@@ -157,6 +186,13 @@ export const App: React.FC = () => {
                       {label}
                     </button>
                   ))}
+                  <button className="export-btn" onClick={handleExportCSV} title="Export watchlist to CSV">
+                    <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                      <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                    </svg>
+                    CSV
+                  </button>
                 </div>
               </div>
             )}
@@ -207,6 +243,14 @@ export const App: React.FC = () => {
         onClose={() => setShowImport(false)}
         onImport={importFromText}
       />
+
+      <footer className="app-footer">
+        vibe coded by{' '}
+        <a href="https://ryandumlao.com" target="_blank" rel="noopener noreferrer">
+          Ryan Dumlao
+        </a>
+        {' '}&copy; 2026
+      </footer>
     </div>
   );
 };

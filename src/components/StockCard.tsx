@@ -28,7 +28,15 @@ export const StockCard: React.FC<Props> = ({ data, onRemove }) => {
       {/* Main row: symbol | chart | price */}
       <div className="stock-row-main">
         <div className="stock-row-left">
-          <span className="stock-ticker">{quote.symbol}</span>
+          <a
+            className="stock-ticker ticker-link"
+            href={`https://www.google.com/finance/quote/${quote.symbol}:NASDAQ`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+          >
+            {quote.symbol}
+          </a>
           <span className="stock-company">{quote.name}</span>
         </div>
 

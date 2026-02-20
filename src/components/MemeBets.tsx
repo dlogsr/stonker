@@ -110,7 +110,15 @@ export const MemeBets: React.FC<Props> = ({ bets, loading, error, onAddTicker, e
 
                 <div className="meme-row-info">
                   <div className="meme-row-top">
-                    <span className="meme-symbol">${bet.symbol}</span>
+                    <a
+                      className="meme-symbol meme-ticker-link"
+                      href={`https://www.google.com/finance/quote/${bet.symbol}:NASDAQ`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      ${bet.symbol}
+                    </a>
                     <span className={`pill pill-${bet.sentiment}`}>{bet.sentiment}</span>
                   </div>
                   <span className="meme-name">{bet.name}</span>
