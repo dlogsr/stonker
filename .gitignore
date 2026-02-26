@@ -4,3 +4,4 @@ dist-server
 dev-dist
 .env
 *.local
+*.apk
