@@ -1,4 +1,4 @@
-// In dev (Vite proxy): defaults to '/api'
-// For Android APK: set VITE_API_URL at build time, e.g.
-//   VITE_API_URL=https://your-server.com/api npm run build
-export const API_BASE = import.meta.env.VITE_API_URL || '/api';
+// Dev: '/api' is proxied to localhost:3001 by Vite
+// Production/Android: hits the deployed Railway server
+export const API_BASE = import.meta.env.VITE_API_URL
+  || (import.meta.env.DEV ? '/api' : 'https://stonker-production.up.railway.app/api');
