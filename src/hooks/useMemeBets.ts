@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ChartPoint } from '../types';
+import { API_BASE } from '../config';
 
 export interface MemeBet {
   rank: number;
@@ -30,7 +31,7 @@ export function useMemeBets(source: 'stocktwits' | 'wsb') {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const endpoint = source === 'stocktwits' ? '/api/stocktwits/trending' : '/api/wsb/trending';
+  const endpoint = source === 'stocktwits' ? `${API_BASE}/stocktwits/trending` : `${API_BASE}/wsb/trending`;
 
   const fetch_ = useCallback(async () => {
     try {

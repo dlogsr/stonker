@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { API_BASE } from '../config';
 
 interface User {
   email: string;
@@ -12,7 +13,7 @@ interface AuthState {
   loading: boolean;
 }
 
-const API_BASE = '/api/auth';
+const AUTH_BASE = `${API_BASE}/auth`;
 
 export function useAuth() {
   const [auth, setAuth] = useState<AuthState>({
@@ -23,7 +24,7 @@ export function useAuth() {
 
   const checkAuth = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/me`, { credentials: 'include' });
+      const res = await fetch(`${AUTH_BASE}/me`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setAuth({
@@ -45,12 +46,12 @@ export function useAuth() {
 
   const login = useCallback(() => {
     // Redirect to backend OAuth flow
-    window.location.href = 'http://localhost:3001/api/auth/login';
+    window.location.href = `${AUTH_BASE}/login`;
   }, []);
 
   const logout = useCallback(async () => {
     try {
-      await fetch(`${API_BASE}/logout`, {
+      await fetch(`${AUTH_BASE}/logout`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -62,7 +63,7 @@ export function useAuth() {
 
   const syncWatchlist = useCallback(async (): Promise<{ tickers: string[]; message?: string }> => {
     try {
-      const res = await fetch('/api/finance/watchlist', { credentials: 'include' });
+      const res = await fetch(`${API_BASE}/finance/watchlist`, { credentials: 'include' });
       if (!res.ok) {
         const err = await res.json();
         return { tickers: [], message: err.error || 'Failed to sync watchlist' };
