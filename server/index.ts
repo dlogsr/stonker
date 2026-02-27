@@ -24,13 +24,15 @@ if (proxyUrl) {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// In production, frontend is served from the same origin — no CORS needed
-if (!isProd) {
-  app.use(cors({
-    origin: 'http://localhost:5173',
-    credentials: true,
-  }));
-}
+// CORS: allow Capacitor app origin (https://localhost) and dev server
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'https://localhost',   // Capacitor Android/iOS
+    'capacitor://localhost',
+  ],
+  credentials: true,
+}));
 
 app.use(express.json());
 
