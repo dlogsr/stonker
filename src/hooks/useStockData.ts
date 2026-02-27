@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { StockData, StockQuote, SentimentData } from '../types';
-
-const API_BASE = '/api';
+import { API_BASE } from '../config';
 const REFRESH_INTERVAL = 30_000; // 30 seconds for quotes
 const SENTIMENT_REFRESH_INTERVAL = 300_000; // 5 minutes for sentiment
 
