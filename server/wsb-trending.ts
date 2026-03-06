@@ -27,7 +27,8 @@ interface MemeBet {
   topMessages: { body: string; sentiment: string; likes: number; url: string }[];
 }
 
-wsbRouter.get('/trending', async (_req, res) => {
+wsbRouter.get('/trending', async (req, res) => {
+  const timeScale = (req.query.timeScale as string) || '1D';
   try {
     // 1. Get trending symbols
     const trendRes = await fetch('https://api.stocktwits.com/api/2/trending/symbols.json', {
@@ -54,7 +55,7 @@ wsbRouter.get('/trending', async (_req, res) => {
         // Fetch sentiment stream and Yahoo chart concurrently
         const [streamData, chartData] = await Promise.all([
           fetchSymbolStream(sym.symbol),
-          fetchYahooChart(sym.symbol).catch(() => null),
+          fetchYahooChart(sym.symbol, timeScale).catch(() => null),
         ]);
 
         const f = sym.fundamentals ?? {};

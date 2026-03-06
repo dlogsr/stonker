@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ChartPoint } from '../types';
+import { ChartPoint, TimeScale } from '../types';
 import { API_BASE } from '../config';
 
 export interface MemeBet {
@@ -26,7 +26,7 @@ export interface MemeBet {
   topMessages: { body: string; sentiment: string; likes: number; url: string }[];
 }
 
-export function useMemeBets(source: 'stocktwits' | 'wsb') {
+export function useMemeBets(source: 'stocktwits' | 'wsb', timeScale: TimeScale = '1D') {
   const [bets, setBets] = useState<MemeBet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +35,7 @@ export function useMemeBets(source: 'stocktwits' | 'wsb') {
 
   const fetch_ = useCallback(async () => {
     try {
-      const res = await fetch(endpoint);
+      const res = await fetch(`${endpoint}?timeScale=${timeScale}`);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         if (body.needsConfig) {
@@ -53,7 +53,7 @@ export function useMemeBets(source: 'stocktwits' | 'wsb') {
     } finally {
       setLoading(false);
     }
-  }, [endpoint]);
+  }, [endpoint, timeScale]);
 
   useEffect(() => {
     fetch_();

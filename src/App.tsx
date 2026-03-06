@@ -8,15 +8,16 @@ import { useWatchlist } from './hooks/useWatchlist';
 import { useStockData } from './hooks/useStockData';
 import { useAuth } from './hooks/useAuth';
 import { useMemeBets } from './hooks/useMemeBets';
-import { SortMode, StockData } from './types';
+import { SortMode, StockData, TimeScale } from './types';
 import './App.css';
 
 export const App: React.FC = () => {
   const { symbols, addSymbol, removeSymbol, importFromText } = useWatchlist();
-  const { stocks, loading, error, refresh } = useStockData(symbols);
+  const [timeScale, setTimeScale] = useState<TimeScale>('1D');
+  const { stocks, loading, error, refresh } = useStockData(symbols, timeScale);
   const { authenticated, user, login, logout, syncWatchlist } = useAuth();
-  const stocktwitsBets = useMemeBets('stocktwits');
-  const wsbBets = useMemeBets('wsb');
+  const stocktwitsBets = useMemeBets('stocktwits', timeScale);
+  const wsbBets = useMemeBets('wsb', timeScale);
   const [showImport, setShowImport] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
@@ -134,6 +135,18 @@ export const App: React.FC = () => {
             </svg>
             CRAZY MEME BETS
           </button>
+        </div>
+
+        <div className="time-scale-bar">
+          {(['1D', '1W', '1M', '1Y'] as TimeScale[]).map(scale => (
+            <button
+              key={scale}
+              className={`time-scale-btn ${timeScale === scale ? 'active' : ''}`}
+              onClick={() => setTimeScale(scale)}
+            >
+              {scale}
+            </button>
+          ))}
         </div>
 
         {activeTab === 'stable' && (

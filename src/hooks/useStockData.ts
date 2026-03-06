@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { StockData, StockQuote, SentimentData } from '../types';
+import { StockData, StockQuote, SentimentData, TimeScale } from '../types';
 import { API_BASE } from '../config';
 const REFRESH_INTERVAL = 30_000; // 30 seconds for quotes
 const SENTIMENT_REFRESH_INTERVAL = 300_000; // 5 minutes for sentiment
 
-export function useStockData(symbols: string[]) {
+export function useStockData(symbols: string[], timeScale: TimeScale = '1D') {
   const [stocks, setStocks] = useState<Map<string, StockData>>(new Map());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -14,7 +14,7 @@ export function useStockData(symbols: string[]) {
     if (symbols.length === 0) return;
 
     try {
-      const res = await fetch(`${API_BASE}/quotes?symbols=${symbols.join(',')}`);
+      const res = await fetch(`${API_BASE}/quotes?symbols=${symbols.join(',')}&timeScale=${timeScale}`);
       if (!res.ok) throw new Error('Failed to fetch quotes');
       const data = await res.json();
 
@@ -35,7 +35,7 @@ export function useStockData(symbols: string[]) {
       setError('Failed to fetch stock data. Is the server running?');
       console.error(err);
     }
-  }, [symbols]);
+  }, [symbols, timeScale]);
 
   const fetchSentimentForSymbol = useCallback(async (symbol: string) => {
     const cached = sentimentCache.current.get(symbol);

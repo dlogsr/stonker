@@ -70,8 +70,17 @@ export interface HistoricalChanges {
   signals: string[];
 }
 
-export async function fetchYahooChart(symbol: string): Promise<YahooChartResult> {
-  const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=5m&range=1d&includePrePost=true`;
+// Map time scale to Yahoo API range + interval
+const SCALE_PARAMS: Record<string, { range: string; interval: string; includePrePost: boolean }> = {
+  '1D': { range: '1d', interval: '5m', includePrePost: true },
+  '1W': { range: '5d', interval: '30m', includePrePost: false },
+  '1M': { range: '1mo', interval: '1d', includePrePost: false },
+  '1Y': { range: '1y', interval: '1d', includePrePost: false },
+};
+
+export async function fetchYahooChart(symbol: string, timeScale: string = '1D'): Promise<YahooChartResult> {
+  const params = SCALE_PARAMS[timeScale] ?? SCALE_PARAMS['1D'];
+  const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${params.interval}&range=${params.range}&includePrePost=${params.includePrePost}`;
   const res = await fetch(url, {
     headers: YF_HEADERS,
     signal: AbortSignal.timeout(8000),
@@ -91,6 +100,7 @@ export async function fetchYahooChart(symbol: string): Promise<YahooChartResult>
   const change = price - previousClose;
   const changePercent = previousClose ? (change / previousClose) * 100 : 0;
 
+  const isIntraday = timeScale === '1D';
   const tradingPeriod = meta.currentTradingPeriod ?? {};
   const regularStart = tradingPeriod.regular?.start ?? 0;
   const regularEnd = tradingPeriod.regular?.end ?? 0;
@@ -100,8 +110,10 @@ export async function fetchYahooChart(symbol: string): Promise<YahooChartResult>
     if (closes[i] == null) continue;
     const t = timestamps[i];
     let phase: 'pre' | 'regular' | 'post' = 'regular';
-    if (t < regularStart) phase = 'pre';
-    else if (t >= regularEnd) phase = 'post';
+    if (isIntraday) {
+      if (t < regularStart) phase = 'pre';
+      else if (t >= regularEnd) phase = 'post';
+    }
     chart.push({ t, p: closes[i]!, phase });
   }
 

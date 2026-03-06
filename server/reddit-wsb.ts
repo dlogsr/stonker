@@ -165,7 +165,8 @@ function extractTickers(text: string): string[] {
   return tickers;
 }
 
-redditWsbRouter.get('/trending', async (_req, res) => {
+redditWsbRouter.get('/trending', async (req, res) => {
+  const timeScale = (req.query.timeScale as string) || '1D';
   try {
     const posts = await fetchRedditPosts();
 
@@ -228,7 +229,7 @@ redditWsbRouter.get('/trending', async (_req, res) => {
     // Enrich with Yahoo chart data
     const enriched = await Promise.all(
       ranked.map(async (ticker, i): Promise<WsbBet> => {
-        const chartData = await fetchYahooChart(ticker.symbol).catch(() => null);
+        const chartData = await fetchYahooChart(ticker.symbol, timeScale).catch(() => null);
 
         const sortedPosts = [...ticker.posts].sort((a, b) => b.score - a.score);
         const topMessages = sortedPosts.slice(0, 4).map(p => ({

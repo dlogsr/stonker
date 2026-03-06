@@ -28,6 +28,7 @@ export interface StockQuote {
 }
 
 export type SortMode = 'default' | 'alpha' | 'pctChange' | 'dollarChange' | 'sentiment';
+export type TimeScale = '1D' | '1W' | '1M' | '1Y';
 
 export interface SentimentData {
   summary: string;
