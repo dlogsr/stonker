@@ -66,11 +66,12 @@ app.get('/api/quotes', async (req, res) => {
     return;
   }
 
+  const timeScale = (req.query.timeScale as string) || '1D';
   try {
     const results = await Promise.allSettled(
       symbols.map(async (symbol) => {
         const [data, hist, earningsDate] = await Promise.all([
-          fetchYahooChart(symbol),
+          fetchYahooChart(symbol, timeScale),
           fetchHistoricalChanges(symbol),
           fetchEarningsDate(symbol),
         ]);
