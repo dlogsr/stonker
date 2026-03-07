@@ -78,7 +78,7 @@ export function useStockData(symbols: string[], timeScale: TimeScale = '1D') {
     }
   }, [symbols, fetchSentimentForSymbol]);
 
-  // Initial load
+  // Initial load + refetch on timeScale change
   useEffect(() => {
     if (symbols.length === 0) {
       setStocks(new Map());
@@ -90,7 +90,7 @@ export function useStockData(symbols: string[], timeScale: TimeScale = '1D') {
       setLoading(false);
       fetchAllSentiment();
     });
-  }, [symbols.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [symbols.join(','), timeScale]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Periodic refresh
   useEffect(() => {
