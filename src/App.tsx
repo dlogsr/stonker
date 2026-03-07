@@ -216,6 +216,7 @@ export const App: React.FC = () => {
                   key={stock.quote.symbol}
                   data={stock}
                   onRemove={removeSymbol}
+                  timeScale={timeScale}
                 />
               ))}
             </div>
@@ -237,6 +238,7 @@ export const App: React.FC = () => {
               onAddTicker={addSymbol}
               existingSymbols={symbols}
               source="stocktwits"
+              timeScale={timeScale}
             />
 
             <MemeBets
@@ -246,6 +248,7 @@ export const App: React.FC = () => {
               onAddTicker={addSymbol}
               existingSymbols={symbols}
               source="wsb"
+              timeScale={timeScale}
             />
           </div>
         )}

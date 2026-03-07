@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MemeBet } from '../hooks/useMemeBets';
+import { TimeScale } from '../types';
 import { Sparkline } from './Sparkline';
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
   onAddTicker: (symbol: string) => void;
   existingSymbols: string[];
   source: 'stocktwits' | 'wsb';
+  timeScale?: TimeScale;
 }
 
 const CONFIG = {
@@ -41,7 +43,7 @@ const CONFIG = {
   },
 };
 
-export const MemeBets: React.FC<Props> = ({ bets, loading, error, onAddTicker, existingSymbols, source }) => {
+export const MemeBets: React.FC<Props> = ({ bets, loading, error, onAddTicker, existingSymbols, source, timeScale = '1D' }) => {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const cfg = CONFIG[source];
 
@@ -129,6 +131,7 @@ export const MemeBets: React.FC<Props> = ({ bets, loading, error, onAddTicker, e
                     <Sparkline
                       points={bet.chart}
                       previousClose={bet.previousClose}
+                      timeScale={timeScale}
                     />
                   )}
                 </div>

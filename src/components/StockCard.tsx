@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { StockData } from '../types';
+import { StockData, TimeScale } from '../types';
 import { Sparkline } from './Sparkline';
 
 interface Props {
   data: StockData;
   onRemove: (symbol: string) => void;
+  timeScale?: TimeScale;
 }
 
-export const StockCard: React.FC<Props> = ({ data, onRemove }) => {
+export const StockCard: React.FC<Props> = ({ data, onRemove, timeScale = '1D' }) => {
   const [expanded, setExpanded] = useState(false);
   const { quote, sentiment } = data;
   const isPositive = quote.change >= 0;
@@ -45,6 +46,7 @@ export const StockCard: React.FC<Props> = ({ data, onRemove }) => {
             <Sparkline
               points={quote.chart}
               previousClose={quote.previousClose ?? quote.price}
+              timeScale={timeScale}
             />
           )}
         </div>
