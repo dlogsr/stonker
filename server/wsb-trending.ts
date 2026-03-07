@@ -107,8 +107,8 @@ async function fetchSymbolStream(symbol: string): Promise<StreamResult> {
     const allMsgs: any[] = [];
     let cursor: number | null = null;
 
-    // Fetch up to 3 pages (30 msgs each = ~90 max)
-    for (let page = 0; page < 3; page++) {
+    // Fetch up to 7 pages (30 msgs each = ~210 max)
+    for (let page = 0; page < 7; page++) {
       const params = cursor ? `&max=${cursor}` : '';
       const url = `https://api.stocktwits.com/api/2/streams/symbol/${encodeURIComponent(symbol)}.json?limit=30${params}`;
       const res = await fetch(url, {
