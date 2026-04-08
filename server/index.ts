@@ -52,6 +52,10 @@ app.use(session({
   },
 }));
 
+// --- Proxy endpoints (open CORS for Claude artifacts / external iframes) ---
+import { proxyRouter } from './proxy.js';
+app.use('/api/proxy', proxyRouter);
+
 // --- API routes ---
 app.use('/api/auth', authRouter);
 app.use('/api/finance', financeRouter);
