@@ -22,7 +22,7 @@ if (proxyUrl) {
 }
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5100;
 
 // CORS: allow Capacitor app origin (https://localhost) and dev server
 app.use(cors({
