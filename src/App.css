@@ -441,12 +441,13 @@
 }
 
 .stock-row-chart {
-  height: 36px;
+  align-self: stretch;
   min-width: 80px;
 }
 
 .sparkline {
   display: block;
+  height: 100%;
 }
 
 .stock-row-right {
@@ -1074,7 +1075,7 @@ a.feed-text:hover {
   .stock-company { font-size: 0.6rem; }
   .stock-price { font-size: 0.8rem; }
   .stock-delta { font-size: 0.6rem; }
-  .stock-row-chart { height: 28px; min-width: 50px; }
+  .stock-row-chart { align-self: stretch; min-width: 50px; }
 
   .row-remove {
     opacity: 1;
