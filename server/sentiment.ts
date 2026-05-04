@@ -117,30 +117,144 @@ async function fetchGoogleNews(symbol: string): Promise<RawSource[]> {
   }
 }
 
+const TOPIC_PATTERNS: [RegExp, string][] = [
+  [/\b(acqui|takeover|buyout|merger|bid\b|buying|purchase)/i, 'acquisition activity'],
+  [/\b(earn|EPS|revenue|quarterly|beat|miss|guidance|results)\b/i, 'earnings'],
+  [/\b(upgrade|downgrade|price target|analyst|rating|outperform|underperform)\b/i, 'analyst coverage'],
+  [/\b(FDA|approval|clinical|trial|drug|pharma|pipeline)\b/i, 'FDA/clinical news'],
+  [/\b(layoff|restructur|cut.*job|job.*cut|workforce)\b/i, 'restructuring'],
+  [/\b(IPO|offering|dilut|share.*sale|secondary)\b/i, 'share offering concerns'],
+  [/\b(divid|buyback|repurchas|return.*capital)\b/i, 'capital returns'],
+  [/\b(CEO|executive|board|leadership|resign|appoint)\b/i, 'leadership changes'],
+  [/\b(squeeze|short.*interest|gamma|options.*flow)\b/i, 'short squeeze speculation'],
+  [/\b(AI|artificial intelligence|machine learning|chip|semiconductor|GPU)\b/i, 'AI/tech momentum'],
+  [/\b(lawsuit|sued|SEC|investigat|fraud|settlement)\b/i, 'legal/regulatory issues'],
+  [/\b(partner|deal|contract|agreement|collaboration)\b/i, 'partnership/deal news'],
+  [/\b(split|stock.*split)\b/i, 'stock split'],
+  [/\b(debt|bond|credit|bankrupt|default)\b/i, 'debt/credit concerns'],
+  [/\b(insider|bought|sold.*shares|filing)\b/i, 'insider activity'],
+  [/\b(rally|surge|soar|moon|rocket|breakout|rip)\b/i, 'bullish momentum'],
+  [/\b(crash|plunge|dump|tank|drill|crater)\b/i, 'bearish pressure'],
+];
+
+function extractTopics(sources: { title: string; type: string }[]): string[] {
+  const topicHits = new Map<string, number>();
+  for (const src of sources) {
+    for (const [pattern, topic] of TOPIC_PATTERNS) {
+      if (pattern.test(src.title)) {
+        topicHits.set(topic, (topicHits.get(topic) ?? 0) + 1);
+      }
+    }
+  }
+  return [...topicHits.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([topic]) => topic);
+}
+
+function extractKeyPhrases(newsHeadlines: string[], symbol: string): string[] {
+  const phrases: string[] = [];
+  for (const headline of newsHeadlines.slice(0, 5)) {
+    let cleaned = headline
+      .replace(/\s*[-–—|]\s*(Reuters|Bloomberg|CNBC|MarketWatch|Yahoo|Forbes|Barron's|WSJ|AP|Stock Titan|Stocktwits|MSN|Trefis|Motley Fool|Seeking Alpha|Investor's Business Daily|Business Insider).*$/i, '')
+      .replace(new RegExp(`\\$?${symbol}\\b`, 'gi'), '')
+      .replace(/\b(stock|shares?|Inc\.?|Corp\.?|Co\.?|Ltd\.?)\b/gi, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+    if (cleaned.length > 15 && cleaned.length < 120) {
+      phrases.push(cleaned);
+    }
+  }
+  return phrases;
+}
+
 function generateSummary(
   symbol: string,
   scoredSources: { title: string; sentiment: 'bullish' | 'bearish' | 'neutral'; type: string }[],
   stBull: number,
   stBear: number,
 ): string {
-  const total = stBull + stBear;
-  if (total === 0 && scoredSources.length === 0) {
+  if (scoredSources.length === 0) {
     return `No recent chatter on $${symbol}.`;
   }
 
-  if (total >= 2) {
-    const pct = Math.round((stBull / total) * 100);
-    const label = pct >= 60 ? 'Bullish' : pct <= 40 ? 'Bearish' : 'Mixed';
-    return `${label} on StockTwits (${pct}% bull of ${total} tagged). ${scoredSources.length} signals total.`;
+  const parts: string[] = [];
+
+  const newsItems = scoredSources.filter(s => s.type === 'news');
+  const socialItems = scoredSources.filter(s => s.type !== 'news');
+  const topics = extractTopics(scoredSources);
+  const keyPhrases = extractKeyPhrases(newsItems.map(s => s.title), symbol);
+
+  if (keyPhrases.length > 0) {
+    const topHeadline = keyPhrases[0];
+    if (keyPhrases.length > 1) {
+      parts.push(`Headlines are focused on ${topHeadline.toLowerCase()}, with additional coverage around ${keyPhrases[1].toLowerCase()}.`);
+    } else {
+      parts.push(`The latest headline: ${topHeadline}.`);
+    }
+  } else if (topics.length > 0) {
+    parts.push(`Recent discussion is centered on ${topics.join(' and ')}.`);
   }
 
+  const total = stBull + stBear;
   const counts = { bullish: 0, bearish: 0, neutral: 0 };
   for (const s of scoredSources) counts[s.sentiment]++;
-  if (counts.bullish === counts.bearish) {
-    return `Mixed signals across ${scoredSources.length} posts for $${symbol}.`;
+
+  if (total >= 3) {
+    const pct = Math.round((stBull / total) * 100);
+    if (pct >= 70) {
+      parts.push(`StockTwits sentiment is strongly bullish at ${pct}% (${total} tagged posts).`);
+    } else if (pct >= 55) {
+      parts.push(`StockTwits leans bullish at ${pct}% (${total} tagged), though some bears remain.`);
+    } else if (pct <= 30) {
+      parts.push(`StockTwits sentiment is heavily bearish at ${100 - pct}% bear (${total} tagged posts).`);
+    } else if (pct <= 45) {
+      parts.push(`StockTwits is tilting bearish with only ${pct}% bulls (${total} tagged posts).`);
+    } else {
+      parts.push(`Community is divided — ${pct}% bullish across ${total} tagged posts on StockTwits.`);
+    }
+  } else if (socialItems.length > 0) {
+    const socialBull = socialItems.filter(s => s.sentiment === 'bullish').length;
+    const socialBear = socialItems.filter(s => s.sentiment === 'bearish').length;
+    if (socialBull > socialBear * 2) {
+      parts.push(`Social chatter is predominantly bullish across ${socialItems.length} posts.`);
+    } else if (socialBear > socialBull * 2) {
+      parts.push(`Social sentiment skews bearish across ${socialItems.length} posts.`);
+    } else {
+      parts.push(`Mixed social signals across ${socialItems.length} posts.`);
+    }
   }
-  const label = counts.bullish > counts.bearish ? 'Leaning bullish' : 'Leaning bearish';
-  return `${label} across ${scoredSources.length} posts for $${symbol}.`;
+
+  if (topics.length > 0 && keyPhrases.length > 0) {
+    const remainingTopics = topics.filter(t =>
+      !keyPhrases.some(p => p.toLowerCase().includes(t.split('/')[0].toLowerCase()))
+    );
+    if (remainingTopics.length > 0) {
+      parts.push(`Key themes: ${remainingTopics.join(', ')}.`);
+    }
+  }
+
+  if (counts.bullish > 0 && counts.bearish > 0) {
+    const bullPhrases = scoredSources.filter(s => s.sentiment === 'bullish').slice(0, 2);
+    const bearPhrases = scoredSources.filter(s => s.sentiment === 'bearish').slice(0, 2);
+    if (bullPhrases.length > 0 && bearPhrases.length > 0) {
+      const bullTopics = extractTopics(bullPhrases);
+      const bearTopics = extractTopics(bearPhrases);
+      if (bullTopics.length > 0 && bearTopics.length > 0 && bullTopics[0] !== bearTopics[0]) {
+        parts.push(`Bulls cite ${bullTopics[0]}, while bears point to ${bearTopics[0]}.`);
+      }
+    }
+  }
+
+  if (newsItems.length > 0 && socialItems.length > 0) {
+    const newsOverall = newsItems.filter(s => s.sentiment === 'bullish').length > newsItems.filter(s => s.sentiment === 'bearish').length ? 'bullish' : 'bearish';
+    const socialOverall = socialItems.filter(s => s.sentiment === 'bullish').length > socialItems.filter(s => s.sentiment === 'bearish').length ? 'bullish' : 'bearish';
+    if (newsOverall !== socialOverall) {
+      parts.push(`Notably, news coverage leans ${newsOverall} while social sentiment is more ${socialOverall}.`);
+    }
+  }
+
+  return parts.join(' ') || `Tracking ${scoredSources.length} signals for $${symbol}.`;
 }
 
 export async function fetchSentiment(symbol: string): Promise<SentimentData> {
