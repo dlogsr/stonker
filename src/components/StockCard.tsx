@@ -107,14 +107,16 @@ export const StockCard: React.FC<Props> = ({ data, onRemove, timeScale = '1D' })
       {/* Expanded detail panel */}
       {expanded && (
         <div className="stock-detail">
-          <div className="stock-summary">
-            <div className="stock-summary-icon">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2a4 4 0 0 1 4 4c0 1.5-.8 2.8-2 3.5V11h3a3 3 0 0 1 3 3v1a2 2 0 0 1-2 2h-1v3a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-3H6a2 2 0 0 1-2-2v-1a3 3 0 0 1 3-3h3V9.5A4 4 0 0 1 8 6a4 4 0 0 1 4-4z"/>
-              </svg>
+          {summary && (
+            <div className="stock-summary">
+              <div className="stock-summary-icon">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2a4 4 0 0 1 4 4c0 1.5-.8 2.8-2 3.5V11h3a3 3 0 0 1 3 3v1a2 2 0 0 1-2 2h-1v3a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-3H6a2 2 0 0 1-2-2v-1a3 3 0 0 1 3-3h3V9.5A4 4 0 0 1 8 6a4 4 0 0 1 4-4z"/>
+                </svg>
+              </div>
+              <p className="stock-summary-text">{summary}</p>
             </div>
-            <p className="stock-summary-text">{summary}</p>
-          </div>
+          )}
           <div className="detail-stats">
             {quote.open != null && <Stat label="Open" value={`$${quote.open.toFixed(2)}`} />}
             {quote.high != null && <Stat label="High" value={`$${quote.high.toFixed(2)}`} />}
