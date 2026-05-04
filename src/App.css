@@ -576,6 +576,35 @@
   border-top: 1px solid var(--border);
 }
 
+.stock-summary {
+  display: flex;
+  gap: 8px;
+  padding: 8px 8px;
+  margin: 4px 0 6px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.06), rgba(59, 130, 246, 0.06));
+  border: 1px solid rgba(139, 92, 246, 0.12);
+  border-radius: 8px;
+}
+
+.stock-summary-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(139, 92, 246, 0.15);
+  border-radius: 50%;
+  color: #a78bfa;
+  margin-top: 1px;
+}
+
+.stock-summary-text {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
 .detail-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
