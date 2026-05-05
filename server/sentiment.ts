@@ -117,6 +117,34 @@ async function fetchGoogleNews(symbol: string): Promise<RawSource[]> {
   }
 }
 
+// --- StockTwits trending summary (cached, refreshed every 10 min) ---
+let trendingCache: { summaries: Map<string, string>; fetchedAt: number } | null = null;
+
+async function getStockTwitsTrendingSummary(symbol: string): Promise<string | null> {
+  const now = Date.now();
+  if (trendingCache && now - trendingCache.fetchedAt < 10 * 60 * 1000) {
+    return trendingCache.summaries.get(symbol.toUpperCase()) ?? null;
+  }
+  try {
+    const res = await fetch('https://api.stocktwits.com/api/2/trending/symbols/equities.json', {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as any;
+    const symbols: any[] = data?.symbols ?? [];
+    const summaries = new Map<string, string>();
+    for (const sym of symbols) {
+      const s = sym?.trends?.summary;
+      if (sym?.symbol && s) summaries.set(sym.symbol.toUpperCase(), s);
+    }
+    trendingCache = { summaries, fetchedAt: now };
+    return summaries.get(symbol.toUpperCase()) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 const TOPIC_PATTERNS: [RegExp, string][] = [
   [/\b(acqui|takeover|buyout|merger|bid\b|buying|purchase)/i, 'acquisition activity'],
   [/\b(earn|EPS|revenue|quarterly|beat|miss|guidance|results)\b/i, 'earnings'],
@@ -258,10 +286,11 @@ function generateSummary(
 }
 
 export async function fetchSentiment(symbol: string): Promise<SentimentData> {
-  const [stItems, redditItems, newsItems] = await Promise.all([
+  const [stItems, redditItems, newsItems, stTrendingSummary] = await Promise.all([
     fetchStockTwits(symbol),
     fetchReddit(symbol),
     fetchGoogleNews(symbol),
+    getStockTwitsTrendingSummary(symbol),
   ]);
 
   const allSources = [...stItems, ...redditItems, ...newsItems];
@@ -301,7 +330,7 @@ export async function fetchSentiment(symbol: string): Promise<SentimentData> {
   while (ni < news.length) interleaved.push(news[ni++]);
 
   return {
-    summary: generateSummary(symbol, scoredSources, stBull, stBear),
+    summary: stTrendingSummary ?? generateSummary(symbol, scoredSources, stBull, stBear),
     sentiment: overallSentiment,
     sources: interleaved.map(s => ({
       type: s.type as 'stocktwits' | 'reddit' | 'news',
