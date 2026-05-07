@@ -85,8 +85,8 @@ export const Sparkline: React.FC<Props> = ({
   const labelH = 10;
   const chartH = height - labelH;
   const prices = points.map(p => p.p);
-  const minP = Math.min(...prices, previousClose);
-  const maxP = Math.max(...prices, previousClose);
+  const minP = Math.min(...prices);
+  const maxP = Math.max(...prices);
   const range = maxP - minP || 1;
   const pad = 1;
 
