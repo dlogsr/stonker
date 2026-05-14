@@ -122,27 +122,46 @@ let trendingCache: { summaries: Map<string, string>; fetchedAt: number } | null 
 
 async function getStockTwitsTrendingSummary(symbol: string): Promise<string | null> {
   const now = Date.now();
-  if (trendingCache && now - trendingCache.fetchedAt < 10 * 60 * 1000) {
-    return trendingCache.summaries.get(symbol.toUpperCase()) ?? null;
+  if (!trendingCache || now - trendingCache.fetchedAt >= 10 * 60 * 1000) {
+    try {
+      const res = await fetch('https://api.stocktwits.com/api/2/trending/symbols/equities.json', {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (res.ok) {
+        const data = await res.json() as any;
+        const symbols: any[] = data?.symbols ?? [];
+        const summaries = new Map<string, string>();
+        for (const sym of symbols) {
+          const s = sym?.trends?.summary;
+          if (sym?.symbol && s) summaries.set(sym.symbol.toUpperCase(), s);
+        }
+        trendingCache = { summaries, fetchedAt: now };
+      }
+    } catch {
+      // use stale cache or fall through to per-symbol fetch
+    }
   }
+
+  const cached = trendingCache?.summaries.get(symbol.toUpperCase());
+  if (cached) return cached;
+
+  // Per-symbol fallback for tickers not in the trending list
   try {
-    const res = await fetch('https://api.stocktwits.com/api/2/trending/symbols/equities.json', {
+    const res = await fetch(`https://api.stocktwits.com/api/2/symbols/show/${encodeURIComponent(symbol)}.json`, {
       headers: { 'User-Agent': 'Mozilla/5.0' },
       signal: AbortSignal.timeout(5000),
     });
-    if (!res.ok) return null;
-    const data = await res.json() as any;
-    const symbols: any[] = data?.symbols ?? [];
-    const summaries = new Map<string, string>();
-    for (const sym of symbols) {
-      const s = sym?.trends?.summary;
-      if (sym?.symbol && s) summaries.set(sym.symbol.toUpperCase(), s);
+    if (res.ok) {
+      const data = await res.json() as any;
+      const summary = data?.symbol?.trends?.summary;
+      if (summary) return summary as string;
     }
-    trendingCache = { summaries, fetchedAt: now };
-    return summaries.get(symbol.toUpperCase()) ?? null;
   } catch {
-    return null;
+    // fall through to generated summary
   }
+
+  return null;
 }
 
 const TOPIC_PATTERNS: [RegExp, string][] = [
