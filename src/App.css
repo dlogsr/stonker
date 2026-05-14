@@ -1041,7 +1041,7 @@ a.feed-text:hover {
 /* ===== Responsive ===== */
 @media (max-width: 480px) {
   .app-header {
-    padding: calc(6px + max(env(safe-area-inset-top, 0px), var(--safe-top, 0px))) 8px 6px;
+    padding: calc(8px + max(env(safe-area-inset-top, 0px), var(--safe-top, 40px))) 8px 6px;
   }
 
   .header-btn {
@@ -1063,16 +1063,17 @@ a.feed-text:hover {
   }
 
   .app-main {
-    padding: 0 6px 16px;
+    max-width: 100%;
+    padding: 0 4px 16px;
   }
 
   .tab-bar {
-    top: calc(42px + max(env(safe-area-inset-top, 0px), var(--safe-top, 0px)));
+    top: calc(44px + max(env(safe-area-inset-top, 0px), var(--safe-top, 40px)));
   }
 
   .tab-btn {
-    font-size: 0.6rem;
-    padding: 10px 4px;
+    font-size: 0.75rem;
+    padding: 14px 8px;
     gap: 4px;
   }
 
@@ -1089,35 +1090,44 @@ a.feed-text:hover {
   }
 
   .sort-chip {
-    padding: 4px 8px;
-    font-size: 0.6rem;
+    padding: 5px 10px;
+    font-size: 0.7rem;
   }
 
   .stock-row-main {
-    grid-template-columns: 1fr minmax(50px, 80px) auto 24px;
+    grid-template-columns: 1fr minmax(50px, 80px) auto 28px;
     gap: 6px;
-    padding: 10px 4px;
-    min-height: 48px;
+    padding: 12px 6px;
+    min-height: 60px;
   }
 
-  .stock-ticker { font-size: 0.85rem; }
-  .stock-company { font-size: 0.6rem; }
-  .stock-price { font-size: 0.8rem; }
-  .stock-delta { font-size: 0.6rem; }
+  .stock-ticker { font-size: 1.1rem; }
+  .stock-company { font-size: 0.8rem; }
+  .stock-price { font-size: 1.1rem; }
+  .stock-delta { font-size: 0.85rem; }
   .stock-row-chart { align-self: stretch; min-width: 50px; }
 
   .row-remove {
     opacity: 1;
     font-size: 1.2rem;
     padding: 4px;
+    min-width: 28px;
+    min-height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .stock-row-indicators {
-    padding: 0 4px 4px;
+    padding: 0 6px 4px;
     gap: 4px;
   }
 
-  .ind-chip { font-size: 0.5rem; padding: 2px 6px; }
+  .ind-chip { font-size: 0.7rem; padding: 3px 8px; }
+
+  .pill { font-size: 0.65rem; padding: 2px 7px; }
+
+  .sentiment-text { font-size: 0.75rem; }
 
   .detail-stats {
     grid-template-columns: repeat(2, 1fr);
@@ -1136,13 +1146,18 @@ a.feed-text:hover {
   }
 
   .add-stock-input {
-    padding: 10px 12px;
-    font-size: 0.85rem;
+    padding: 12px;
+    font-size: 1rem;
   }
 
   .add-stock-btn {
-    padding: 10px 14px;
-    font-size: 0.85rem;
+    padding: 12px;
+    font-size: 1rem;
+  }
+
+  .time-scale-btn {
+    font-size: 0.75rem;
+    padding: 6px 14px;
   }
 
   .modal-overlay {
@@ -1521,35 +1536,36 @@ a.feed-text:hover {
 /* Responsive meme */
 @media (max-width: 480px) {
   .meme-row-main {
-    grid-template-columns: 20px 1fr minmax(40px, 60px) auto auto 24px;
+    grid-template-columns: 22px 1fr minmax(40px, 60px) auto auto 28px;
     gap: 4px;
-    padding: 10px 4px;
+    padding: 12px 6px;
+    min-height: 52px;
   }
 
-  .meme-row-chart { height: 24px; min-width: 40px; }
-  .meme-row-price { min-width: 50px; }
-  .meme-price { font-size: 0.7rem; }
-  .meme-delta { font-size: 0.55rem; }
-  .meme-row-volume { min-width: 55px; }
+  .meme-row-chart { height: 28px; min-width: 40px; }
+  .meme-row-price { min-width: 55px; }
+  .meme-price { font-size: 0.85rem; }
+  .meme-delta { font-size: 0.7rem; }
+  .meme-row-volume { min-width: 60px; }
 
   .meme-bar {
-    width: 55px;
+    width: 60px;
   }
 
-  .meme-bar-label { font-size: 0.5rem; }
+  .meme-bar-label { font-size: 0.6rem; }
 
   .meme-row-engagement {
-    padding-left: 28px;
+    padding-left: 30px;
     gap: 8px;
-    font-size: 0.55rem;
+    font-size: 0.65rem;
   }
 
   .meme-detail {
-    padding-left: 28px;
+    padding-left: 30px;
   }
 
-  .meme-symbol { font-size: 0.8rem; }
-  .meme-name { font-size: 0.55rem; }
+  .meme-symbol { font-size: 0.95rem; }
+  .meme-name { font-size: 0.7rem; }
 }
 
 @media (max-width: 360px) {
