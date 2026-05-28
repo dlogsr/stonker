@@ -48,6 +48,7 @@ export interface ChartPoint {
 export interface YahooChartResult {
   symbol: string;
   name: string;
+  exchange: string;
   price: number;
   change: number;
   changePercent: number;
@@ -122,6 +123,7 @@ export async function fetchYahooChart(symbol: string, timeScale: string = '1D'):
   return {
     symbol: meta.symbol ?? symbol,
     name: meta.shortName || meta.longName || symbol,
+    exchange: meta.exchangeName ?? '',
     price,
     change,
     changePercent,

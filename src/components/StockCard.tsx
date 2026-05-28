@@ -9,6 +9,14 @@ interface Props {
   timeScale?: TimeScale;
 }
 
+function googleExchange(yahooExchange?: string): string {
+  const e = yahooExchange ?? '';
+  if (/nasdaq/i.test(e)) return 'NASDAQ';
+  if (/arca/i.test(e)) return 'NYSEARCA';
+  if (/nyse/i.test(e)) return 'NYSE';
+  return 'NASDAQ';
+}
+
 export const StockCard: React.FC<Props> = ({ data, onRemove, timeScale = '1D' }) => {
   const [expanded, setExpanded] = useState(false);
   const { quote, sentiment } = data;
@@ -34,7 +42,7 @@ export const StockCard: React.FC<Props> = ({ data, onRemove, timeScale = '1D' })
         <div className="stock-row-left">
           <a
             className="stock-ticker ticker-link"
-            href={`https://www.google.com/finance/quote/${quote.symbol}:NASDAQ`}
+            href={`https://www.google.com/finance/quote/${quote.symbol}:${googleExchange(quote.exchange)}`}
             target="_blank"
             rel="noopener noreferrer"
             onClick={e => e.stopPropagation()}

@@ -7,6 +7,7 @@ export interface ChartPoint {
 export interface StockQuote {
   symbol: string;
   name: string;
+  exchange?: string;
   price: number;
   change: number;
   changePercent: number;
