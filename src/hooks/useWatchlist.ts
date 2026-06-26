@@ -16,6 +16,11 @@ function loadSymbols(): string[] {
 
 function saveSymbols(symbols: string[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(symbols));
+  // Sync to Android SharedPreferences so the Android Auto Car App reads the same list.
+  try {
+    const bridge = (window as any).StonkerAndroid;
+    if (bridge?.saveWatchlist) bridge.saveWatchlist(JSON.stringify(symbols));
+  } catch {}
 }
 
 export function useWatchlist() {
