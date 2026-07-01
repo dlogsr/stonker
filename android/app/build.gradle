@@ -38,6 +38,7 @@ dependencies {
     implementation project(':capacitor-android')
     implementation "androidx.car.app:app:1.4.0"
     wearApp project(':wear')
+    implementation "com.google.android.gms:play-services-wearable:18.2.0"
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"

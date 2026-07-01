@@ -22,5 +22,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Receives watchlist updates pushed from the phone app -->
+        <service
+            android:name=".WatchlistListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:path="/watchlist" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>
