@@ -11,61 +11,100 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import org.json.JSONArray
 
-sealed interface StockUiState {
-    data object Loading : StockUiState
-    data class Success(val stocks: List<StockItem>) : StockUiState
-    data class Error(val message: String) : StockUiState
-}
+data class WatchlistState(
+    val stocks: List<StockItem> = emptyList(),
+    val loading: Boolean = true,
+    val error: String? = null,
+)
+
+data class MemeState(
+    val bets: List<MemeBet> = emptyList(),
+    val loading: Boolean = true,
+    val error: String? = null,
+)
 
 class StockViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val _uiState = MutableStateFlow<StockUiState>(StockUiState.Loading)
-    val uiState: StateFlow<StockUiState> = _uiState.asStateFlow()
+    private val _watchlist = MutableStateFlow(WatchlistState())
+    val watchlist: StateFlow<WatchlistState> = _watchlist.asStateFlow()
+
+    private val _meme = MutableStateFlow(MemeState())
+    val meme: StateFlow<MemeState> = _meme.asStateFlow()
 
     init {
         viewModelScope.launch {
-            // Pull any watchlist the phone already sent before we launched.
             syncFromDataLayer()
-            while (true) {
-                fetchOnce()
-                delay(30_000)
+            while (true) { fetchWatchlist(); delay(30_000) }
+        }
+        viewModelScope.launch {
+            while (true) { fetchMeme(); delay(5 * 60_000L) }
+        }
+    }
+
+    fun refreshWatchlist() { viewModelScope.launch { fetchWatchlist() } }
+    fun refreshMeme() { viewModelScope.launch { fetchMeme() } }
+
+    fun loadSentiment(symbol: String) {
+        val stock = _watchlist.value.stocks.find { it.symbol == symbol }
+        if (stock?.sentiment != null || stock?.sentimentLoading == true) return
+        _watchlist.update { s -> s.copy(stocks = s.stocks.map {
+            if (it.symbol == symbol) it.copy(sentimentLoading = true) else it
+        })}
+        viewModelScope.launch {
+            try {
+                val data = StockRepository.fetchSentiment(symbol)
+                _watchlist.update { s -> s.copy(stocks = s.stocks.map {
+                    if (it.symbol == symbol) it.copy(sentiment = data, sentimentLoading = false) else it
+                })}
+            } catch (_: Exception) {
+                _watchlist.update { s -> s.copy(stocks = s.stocks.map {
+                    if (it.symbol == symbol) it.copy(sentimentLoading = false) else it
+                })}
             }
         }
     }
 
-    fun refresh() {
-        viewModelScope.launch { fetchOnce() }
+    private suspend fun fetchWatchlist() {
+        try {
+            val fetched = StockRepository.fetchQuotes(getWatchlistSymbols())
+            val existing = _watchlist.value.stocks.associateBy { it.symbol }
+            _watchlist.value = WatchlistState(
+                stocks = fetched.map { new ->
+                    val old = existing[new.symbol]
+                    new.copy(sentiment = old?.sentiment, sentimentLoading = old?.sentimentLoading ?: false)
+                },
+                loading = false,
+            )
+        } catch (e: Exception) {
+            if (_watchlist.value.stocks.isEmpty())
+                _watchlist.value = _watchlist.value.copy(loading = false, error = e.message)
+        }
+    }
+
+    private suspend fun fetchMeme() {
+        try {
+            _meme.value = MemeState(bets = StockRepository.fetchMemeBets(), loading = false)
+        } catch (e: Exception) {
+            if (_meme.value.bets.isEmpty())
+                _meme.value = _meme.value.copy(loading = false, error = e.message)
+        }
     }
 
     private suspend fun syncFromDataLayer() {
         try {
             val items = Wearable.getDataClient(getApplication<Application>())
-                .getDataItems(Uri.parse("wear:/*/watchlist"))
-                .await()
+                .getDataItems(Uri.parse("wear:/*/watchlist")).await()
             for (item in items) {
                 val json = DataMapItem.fromDataItem(item).dataMap.getString("symbols")
-                if (!json.isNullOrEmpty()) {
-                    saveWatchlistToPrefs(json)
-                    break
-                }
+                if (!json.isNullOrEmpty()) { saveWatchlistToPrefs(json); break }
             }
             items.release()
         } catch (_: Exception) {}
-    }
-
-    private suspend fun fetchOnce() {
-        try {
-            val stocks = StockRepository.fetchQuotes(getWatchlistSymbols())
-            _uiState.value = StockUiState.Success(stocks)
-        } catch (e: Exception) {
-            if (_uiState.value !is StockUiState.Success) {
-                _uiState.value = StockUiState.Error(e.message ?: "Unknown error")
-            }
-        }
     }
 
     private fun saveWatchlistToPrefs(json: String) {
@@ -74,17 +113,14 @@ class StockViewModel(app: Application) : AndroidViewModel(app) {
             .edit().putString("watchlist", json).apply()
     }
 
-    private fun getWatchlistSymbols(): List<String> {
-        return try {
-            val prefs = getApplication<Application>()
-                .getSharedPreferences("stonker_prefs", Context.MODE_PRIVATE)
-            val json = prefs.getString("watchlist", null)
-            if (!json.isNullOrEmpty()) {
-                JSONArray(json).let { arr ->
-                    (0 until arr.length()).map { arr.getString(it) }
-                        .takeIf { it.isNotEmpty() }
-                }
-            } else null
-        } catch (_: Exception) { null } ?: StockRepository.DEFAULT_SYMBOLS
-    }
+    private fun getWatchlistSymbols(): List<String> = try {
+        val prefs = getApplication<Application>()
+            .getSharedPreferences("stonker_prefs", Context.MODE_PRIVATE)
+        val json = prefs.getString("watchlist", null)
+        if (!json.isNullOrEmpty()) {
+            JSONArray(json).let { arr ->
+                (0 until arr.length()).map { arr.getString(it) }.takeIf { it.isNotEmpty() }
+            }
+        } else null
+    } catch (_: Exception) { null } ?: StockRepository.DEFAULT_SYMBOLS
 }
