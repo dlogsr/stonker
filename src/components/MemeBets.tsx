@@ -30,7 +30,7 @@ const CONFIG = {
   wsb: {
     title: 'WSB CHAOS',
     subtitle: 'Trending on r/wallstreetbets \u00b7 ranked by hype',
-    loadingText: 'scraping WSB...',
+    loadingText: 'loading WSB...',
     postsLabel: 'mentions',
     likesLabel: 'upvotes',
     topPostsTitle: 'Top threads by upvotes',
@@ -73,11 +73,9 @@ export const MemeBets: React.FC<Props> = ({ bets, loading, error, onAddTicker, e
           </div>
         </div>
         <div className="meme-empty">
-          {error === 'needs_config'
-            ? 'Add REDDIT_CLIENT_ID & REDDIT_CLIENT_SECRET env vars to enable WSB scraping'
-            : error
-              ? 'Reddit API unavailable — retrying in 5m'
-              : 'No trending tickers right now'}
+          {error
+            ? 'WSB data unavailable — retrying in 5m'
+            : 'No trending tickers right now'}
         </div>
       </section>
     );

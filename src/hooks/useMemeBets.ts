@@ -37,12 +37,7 @@ export function useMemeBets(source: 'stocktwits' | 'wsb', timeScale: TimeScale =
     try {
       const res = await fetch(`${endpoint}?timeScale=${timeScale}`);
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        if (body.needsConfig) {
-          setError('needs_config');
-        } else {
-          setError('Could not load trending bets');
-        }
+        setError('Could not load trending bets');
         return;
       }
       const data = await res.json();
