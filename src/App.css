@@ -1576,3 +1576,10 @@ a.feed-text:hover {
 
   .meme-row-chart { display: none; }
 }
+
+.meme-threads-link {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.65rem;
+  color: var(--blue);
+}

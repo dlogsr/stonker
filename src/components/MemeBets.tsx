@@ -195,7 +195,7 @@ export const MemeBets: React.FC<Props> = ({ bets, loading, error, onAddTicker, e
                     {bet.marketCap && <span>Mkt Cap: ${bet.marketCap}</span>}
                     {bet.beta != null && <span>Beta: {bet.beta.toFixed(2)}</span>}
                     {bet.peRatio != null && <span>P/E: {bet.peRatio.toFixed(1)}</span>}
-                    <span>Hype Score: {bet.trendScore.toFixed(1)}</span>
+                    <span>{source === 'wsb' ? 'Mentions' : 'Hype Score'}: {bet.trendScore.toFixed(source === 'wsb' ? 0 : 1)}</span>
                   </div>
 
                   {bet.topMessages.length > 0 && (
@@ -218,6 +218,18 @@ export const MemeBets: React.FC<Props> = ({ bets, loading, error, onAddTicker, e
                         </a>
                       ))}
                     </div>
+                  )}
+
+                  {bet.threadsUrl && (
+                    <a
+                      className="meme-threads-link"
+                      href={bet.threadsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      View all r/wallstreetbets threads for ${bet.symbol} &rarr;
+                    </a>
                   )}
                 </div>
               )}

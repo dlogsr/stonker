@@ -8,6 +8,7 @@ export interface MemeBet {
   name: string;
   trendScore: number;
   summary?: string;
+  threadsUrl?: string;
   sentiment: 'bullish' | 'bearish' | 'neutral';
   bullPct: number;
   watchers?: number;
