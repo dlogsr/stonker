@@ -16,7 +16,7 @@ const BEARISH_WORDS = [
   'drilling', 'crater', 'tanking', 'dead cat', 'trap',
 ];
 
-function scoreSentiment(text: string): 'bullish' | 'bearish' | 'neutral' {
+export function scoreSentiment(text: string): 'bullish' | 'bearish' | 'neutral' {
   const lower = text.toLowerCase();
   let score = 0;
   for (const word of BULLISH_WORDS) if (lower.includes(word)) score++;
@@ -120,7 +120,7 @@ async function fetchGoogleNews(symbol: string): Promise<RawSource[]> {
 // --- StockTwits trending summary (cached, refreshed every 10 min) ---
 let trendingCache: { summaries: Map<string, string>; fetchedAt: number } | null = null;
 
-async function getStockTwitsTrendingSummary(symbol: string): Promise<string | null> {
+export async function getStockTwitsTrendingSummary(symbol: string): Promise<string | null> {
   const now = Date.now();
   if (!trendingCache || now - trendingCache.fetchedAt >= 10 * 60 * 1000) {
     try {
